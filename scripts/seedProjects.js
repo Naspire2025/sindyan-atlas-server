@@ -89,6 +89,12 @@ function validateSeedData(data) {
   }
 }
 
+function withSslMode(connectionString) {
+  if (/[?&]sslmode=/.test(connectionString)) return connectionString;
+  const separator = connectionString.includes('?') ? '&' : '?';
+  return `${connectionString}${separator}sslmode=require`;
+}
+
 async function seedPostgres(data) {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL is required for PostgreSQL seeding.');
@@ -100,8 +106,9 @@ async function seedPostgres(data) {
     throw new Error('PostgreSQL seeding requires the pg package. Install it with: npm install pg');
   }
 
-  const client = new Client({ connectionString });
+  const client = new Client({ connectionString: withSslMode(connectionString) });
   const stats = {
+    users: 0,
     projectsCreated: 0, projectsUpdated: 0,
     phases: 0, milestones: 0, tasks: 0, memberships: 0, links: 0,
     budgetLines: 0, spendRecords: 0, risks: 0, issues: 0, allocations: 0,
@@ -109,6 +116,30 @@ async function seedPostgres(data) {
   };
   const creatorUserId = Number(data.creatorUserId);
   await client.connect();
+
+  const seedUsers = async () => {
+    const team = [
+      { id: 1, name: 'Abdulsalam', email: 'abdulsalam@sindyan.team', role: 'admin' },
+      { id: 2, name: 'Ayesha', email: 'ayesha@sindyan.team', role: 'admin' },
+      { id: 3, name: 'Bilal', email: 'bilal@sindyan.team', role: 'team_member' },
+      { id: 4, name: 'Fatima', email: 'fatima@sindyan.team', role: 'team_member' },
+    ];
+    for (const user of team) {
+      await client.query(
+        `INSERT INTO users (id, name, email_normalized, email_display, role, status)
+         VALUES ($1, $2, LOWER($3), $3, $4, 'active')
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name,
+           email_normalized = EXCLUDED.email_normalized,
+           email_display = EXCLUDED.email_display,
+           role = EXCLUDED.role,
+           status = 'active',
+           updated_at = NOW()`,
+        [user.id, user.name, user.email, user.role],
+      );
+      stats.users += 1;
+    }
+  };
 
   const clearProjectChildren = async (projectId) => {
     await client.query('DELETE FROM tasks WHERE project_id = $1', [projectId]);
@@ -139,6 +170,8 @@ async function seedPostgres(data) {
       await client.query('DELETE FROM projects');
       await client.query('DELETE FROM assets');
     }
+
+    await seedUsers();
 
     for (const project of data.projects) {
       const existing = await client.query('SELECT id FROM projects WHERE LOWER(name) = LOWER($1) ORDER BY id LIMIT 1', [project.name]);
@@ -422,7 +455,7 @@ function toProjectValues(project) {
 
 function printSummary(database, stats) {
   console.log(`Seeded ${seedData.source} into ${database}.`);
-  console.log(`Projects: ${stats.projectsCreated} created, ${stats.projectsUpdated} updated${process.argv.includes('--reset') ? ' (reset)' : ''}.`);
+  console.log(`Users: ${stats.users}  Projects: ${stats.projectsCreated} created, ${stats.projectsUpdated} updated${process.argv.includes('--reset') ? ' (reset)' : ''}.`);
   console.log(`Phases: ${stats.phases}  Milestones: ${stats.milestones}  Tasks: ${stats.tasks}`);
   console.log(`Memberships: ${stats.memberships}  Links: ${stats.links}  Allocations: ${stats.allocations}`);
   console.log(`Budget lines: ${stats.budgetLines}  Spend records: ${stats.spendRecords}`);
