@@ -1,0 +1,33 @@
+import { Router } from 'express';
+import { createLinkController, createMilestoneController, createPhaseController, deleteLinkController, deleteMilestoneController, deletePhaseController, listLinksController, listMilestonesController, listPhasesController, updateLinkController, updateMilestoneController, updatePhaseController } from '../controllers/project-planning.controller';
+import { createBudgetLineController, createSpendRecordController, financialSummaryController, listBudgetLinesController, listSpendRecordsController } from '../controllers/finance.controller';
+import { createIssueController, createRiskController, listIssuesController, listRisksController } from '../controllers/risk-issue.controller';
+import { projectAllocationsController } from '../controllers/resource.controller';
+import { requireAuth } from '../middleware/require-auth.middleware';
+import { requireCsrf } from '../middleware/require-csrf.middleware';
+
+export const projectPlanningRouter = Router({ mergeParams: true });
+export const milestoneRouter = Router();
+
+projectPlanningRouter.get('/links', requireAuth, listLinksController);
+projectPlanningRouter.post('/links', requireAuth, requireCsrf, createLinkController);
+projectPlanningRouter.patch('/links/:linkId', requireAuth, requireCsrf, updateLinkController);
+projectPlanningRouter.delete('/links/:linkId', requireAuth, requireCsrf, deleteLinkController);
+projectPlanningRouter.get('/phases', requireAuth, listPhasesController);
+projectPlanningRouter.post('/phases', requireAuth, requireCsrf, createPhaseController);
+projectPlanningRouter.patch('/phases/:phaseId', requireAuth, requireCsrf, updatePhaseController);
+projectPlanningRouter.delete('/phases/:phaseId', requireAuth, requireCsrf, deletePhaseController);
+projectPlanningRouter.get('/milestones', requireAuth, listMilestonesController);
+projectPlanningRouter.post('/milestones', requireAuth, requireCsrf, createMilestoneController);
+projectPlanningRouter.get('/budget-lines', requireAuth, listBudgetLinesController);
+projectPlanningRouter.post('/budget-lines', requireAuth, requireCsrf, createBudgetLineController);
+projectPlanningRouter.get('/spend-records', requireAuth, listSpendRecordsController);
+projectPlanningRouter.post('/spend-records', requireAuth, requireCsrf, createSpendRecordController);
+projectPlanningRouter.get('/financial-summary', requireAuth, financialSummaryController);
+projectPlanningRouter.get('/risks', requireAuth, listRisksController);
+projectPlanningRouter.post('/risks', requireAuth, requireCsrf, createRiskController);
+projectPlanningRouter.get('/issues', requireAuth, listIssuesController);
+projectPlanningRouter.post('/issues', requireAuth, requireCsrf, createIssueController);
+projectPlanningRouter.get('/allocations', requireAuth, projectAllocationsController);
+milestoneRouter.patch('/:id', requireAuth, requireCsrf, updateMilestoneController);
+milestoneRouter.delete('/:id', requireAuth, requireCsrf, deleteMilestoneController);

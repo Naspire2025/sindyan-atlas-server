@@ -1,0 +1,128 @@
+{
+  "source": "Sindyan Projects 2026-2027 V01.xlsx",
+  "taskOwner": "Mr. Abdulsalam",
+  "projects": [
+    {
+      "name": "Startup 100 Institute",
+      "description": "Startup 100 Institute is an online institute offering a Micro Bachelor's Degree (MBD) in Entrepreneurship through its White Label website, www.100tasks.com, and other offerings.",
+      "sourcePriority": 1,
+      "priority": "critical",
+      "websiteUrl": "https://www.startup100.io",
+      "owner": "Me, my two brothers, and a trainee programmer",
+      "status": "active",
+      "tasks": [
+        "Coordinate with the current team and formally receive the software work",
+        "Implement software gaps and new software requirements requested by the team",
+        "Create institute information PDFs in Arabic and English",
+        "Coordinate with the marketing company and follow the work program"
+      ]
+    },
+    {
+      "name": "Mawrid",
+      "description": "Mawrid is a platform connecting merchants with young people and students to work as affiliate marketers, earning a commission on each successful sale.",
+      "sourcePriority": 1,
+      "priority": "critical",
+      "websiteUrl": "https://www.mawrid.net",
+      "owner": "Pakistani designer and Indian team",
+      "status": "active",
+      "tasks": [
+        "Coordinate with Zain and understand the design work process",
+        "Receive completed design work and organize it in the platform Drive folder",
+        "Coordinate with the India app development team and review work quality",
+        "Audit the platform and apps, document issues, and verify technical fixes"
+      ]
+    },
+    {
+      "name": "Naspir",
+      "description": "Naspire is a professional networking platform for businesses, helping them connect and refer business to each other. It combines the advantages of both www.bni.com and www.joinentre.com.",
+      "sourcePriority": 2,
+      "priority": "high",
+      "websiteUrl": "https://www.naspire.org",
+      "owner": "Our Team",
+      "status": "active",
+      "tasks": [
+        "Complete the current approved plan",
+        "Prepare a market study and target-entity file for the first launch phase"
+      ]
+    },
+    {
+      "name": "Personal Assistance",
+      "description": "Assistant to the Employer (Mr. Mohammed Abu Sheikha): Performing executive tasks to assist the Executive Director in managing his professional affairs.",
+      "sourcePriority": 2,
+      "priority": "high",
+      "websiteUrl": "https://www.drmash.me",
+      "owner": null,
+      "status": "planning",
+      "tasks": [
+        "Build a personal brand based on global best practices",
+        "Create a personal website for the new brand",
+        "Enrich the personal website with high-quality articles and content",
+        "Create an AI-powered training course using Synthesia videos",
+        "Establish a user-friendly dashboard for monitoring all projects",
+        "Select secure and sustainable storage for files, data, websites, and work documents"
+      ]
+    },
+    {
+      "name": "Phicons",
+      "description": "Phicons is a corporate consulting firm that believes true organizational transformation begins from within—with leaders, teams, and corporate culture. It works with public and private companies, government institutions, and civil society organizations in the Middle East and beyond.",
+      "sourcePriority": 3,
+      "priority": "medium",
+      "websiteUrl": "https://www.phicons.com",
+      "owner": null,
+      "status": "planning",
+      "tasks": [
+        "Develop the company website in Arabic and English using global references",
+        "Prepare a comprehensive company profile in Arabic and English"
+      ]
+    },
+    {
+      "name": "Tawazun Club",
+      "description": "Tawazun Club aims to create a balanced community combining learning, work, volunteering, and self-development. It offers subscribers 20 benefits worth more than $2,000 for $99, with an opportunity to work as marketers under conditions that prioritize subscriber value.",
+      "sourcePriority": 3,
+      "priority": "medium",
+      "websiteUrl": "https://www.tawazun.club",
+      "owner": null,
+      "status": "planning",
+      "tasks": [
+        "Research global best practices and create content aligned with the club's high-value subscription model"
+      ]
+    },
+    {
+      "name": "One Million Arab Marketers",
+      "description": "The One Million Professional Arab Marketers initiative aims to address the shortage of professional marketers in the Arab market, create employment for Arab youth, and transfer leading marketing expertise to participants and benefiting organizations.",
+      "sourcePriority": 4,
+      "priority": "low",
+      "websiteUrl": "https://www.1000000.am",
+      "owner": null,
+      "status": "planning",
+      "tasks": [
+        "Research global best practices and create content aligned with the platform direction",
+        "Develop the platform according to the approved direction"
+      ]
+    },
+    {
+      "name": "MAP for Jordan",
+      "description": "MAP for Jordan is a comprehensive plan containing 36 high-quality projects aimed at creating 36,000 jobs within 36 months in cooperation with government entities.",
+      "sourcePriority": 4,
+      "priority": "low",
+      "websiteUrl": null,
+      "owner": null,
+      "status": "planning",
+      "tasks": [
+        "Develop an integrated platform presenting the 36 projects and participation opportunities"
+      ]
+    },
+    {
+      "name": "Bani Jordan",
+      "description": "The website is ready and operational.",
+      "sourcePriority": 5,
+      "priority": "low",
+      "websiteUrl": "https://www.banijordan.org",
+      "owner": null,
+      "status": "active",
+      "tasks": [
+        "Take over the website from the current developer and maintain optimal operation"
+      ]
+    }
+  ]
+}
