@@ -47,8 +47,7 @@ export function createApp() {
   app.use('/api/projects/:projectId/members', membershipRouter);
   app.use('/api/projects/:projectId/finance', projectFinanceRouter);
   app.use('/api/milestones', milestoneRouter);
-  app.use('/api/budget-lines', standaloneFinanceRouter);
-  app.use('/api/spend-records', standaloneFinanceRouter);
+  app.use('/api', standaloneFinanceRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/project-member-allocations', memberAllocationRouter);
   app.use('/api/assets', assetRouter);

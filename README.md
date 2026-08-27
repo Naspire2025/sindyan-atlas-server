@@ -162,6 +162,7 @@ src/
 | DELETE | `/api/tasks/:id` | Delete task |
 | GET | `/api/projects/:id/finance/financial-summary` | Financial summary |
 | POST | `/api/projects/:id/finance/budget-lines` | Create budget line |
+| PATCH | `/api/budget-lines/:id` | Update budget line |
 | POST | `/api/projects/:id/finance/spend-records` | Create spend record |
 | GET | `/api/projects/:id/risks` | List risks |
 | POST | `/api/projects/:id/risks` | Create risk |
