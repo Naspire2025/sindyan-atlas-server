@@ -93,7 +93,8 @@ export function revokeInvitationController(request: Request, response: Response,
 
 export function logoutController(request: Request, response: Response): void {
   if (request.sessionId) revokeSession(request.sessionId);
-  response.clearCookie(env.sessionCookieName, sessionCookieOptions(new Date(0)));
+  const { expires: _expires, ...clearOptions } = sessionCookieOptions(new Date(0));
+  response.clearCookie(env.sessionCookieName, clearOptions);
   response.status(204).send();
 }
 

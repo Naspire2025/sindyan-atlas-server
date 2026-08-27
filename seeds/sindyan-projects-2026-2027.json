@@ -1,128 +1,447 @@
 {
-  "source": "Sindyan Projects 2026-2027 V01.xlsx",
+  "source": "Sindyan Projects 2026-2027 V01.xlsx (enriched for demo)",
   "taskOwner": "Mr. Abdulsalam",
+  "creatorUserId": 1,
+  "users": {
+    "admin": 1,
+    "testAdmin": 2,
+    "projectLead": 3,
+    "teamMember": 4
+  },
   "projects": [
     {
       "name": "Startup 100 Institute",
       "description": "Startup 100 Institute is an online institute offering a Micro Bachelor's Degree (MBD) in Entrepreneurship through its White Label website, www.100tasks.com, and other offerings.",
-      "sourcePriority": 1,
       "priority": "critical",
       "websiteUrl": "https://www.startup100.io",
       "owner": "Me, my two brothers, and a trainee programmer",
+      "ownerUserId": 1,
       "status": "active",
+      "startDate": "2026-01-05",
+      "deadline": "2027-06-30",
+      "budgetAmount": 42000,
+      "budgetCurrency": "USD",
+      "phases": [
+        { "name": "Discovery", "position": 0, "startDate": "2026-01-05", "endDate": "2026-02-27" },
+        { "name": "Build", "position": 1, "startDate": "2026-03-02", "endDate": "2026-11-27" },
+        { "name": "Launch", "position": 2, "startDate": "2026-12-01", "endDate": "2027-03-31" },
+        { "name": "Growth", "position": 3, "startDate": "2027-04-01", "endDate": "2027-06-30" }
+      ],
+      "milestones": [
+        { "title": "Handover of existing software", "targetDate": "2026-02-27", "status": "done", "phase": "Discovery" },
+        { "title": "Priority gap closure complete", "targetDate": "2026-06-30", "status": "in_progress", "phase": "Build" },
+        { "title": "Content pack published (AR + EN)", "targetDate": "2026-08-31", "status": "in_progress", "phase": "Build" },
+        { "title": "Public launch", "targetDate": "2027-03-31", "status": "not_started", "phase": "Launch" }
+      ],
+      "members": [
+        { "userId": 1, "projectRole": "project_lead" },
+        { "userId": 3, "projectRole": "project_lead" },
+        { "userId": 4, "projectRole": "member" },
+        { "userId": 2, "projectRole": "member" }
+      ],
       "tasks": [
-        "Coordinate with the current team and formally receive the software work",
-        "Implement software gaps and new software requirements requested by the team",
-        "Create institute information PDFs in Arabic and English",
-        "Coordinate with the marketing company and follow the work program"
+        { "title": "Coordinate with the current team and formally receive the software work", "description": "Schedule a handover session, inventory the codebase (repo, credentials, hosting), and log any open items.", "status": "done", "priority": "critical", "dueDate": "2026-02-27", "milestone": "Handover of existing software", "assigneeUserId": 1, "estimatedHours": 24, "owner": "Mr. Abdulsalam" },
+        { "title": "Implement software gaps and new software requirements requested by the team", "description": "Prioritize the gap list with the institute team and implement the top-priority items in weekly sprints.", "status": "in_progress", "priority": "critical", "dueDate": "2026-06-30", "milestone": "Priority gap closure complete", "assigneeUserId": 3, "estimatedHours": 160, "owner": "Me, my two brothers" },
+        { "title": "Create institute information PDFs in Arabic and English", "description": "Draft brochure copy, review bilingual content, and produce print-ready PDFs for the MBD program.", "status": "reviewing", "priority": "high", "dueDate": "2026-08-31", "milestone": "Content pack published (AR + EN)", "assigneeUserId": 4, "estimatedHours": 20, "owner": "Trainee programmer" },
+        { "title": "Coordinate with the marketing company and follow the work program", "description": "Weekly status with the agency; track deliverables against the onboarding and growth marketing plan.", "status": "in_progress", "priority": "high", "dueDate": "2026-12-31", "milestone": "Public launch", "assigneeUserId": 1, "estimatedHours": 30, "owner": "Mr. Abdulsalam" },
+        { "title": "Prepare the launch landing page", "description": "Design and build the pre-launch landing page with waitlist capture.", "status": "todo", "priority": "medium", "dueDate": "2027-01-15", "milestone": "Public launch", "assigneeUserId": 2, "estimatedHours": 16, "owner": "Our team" },
+        { "title": "Configure analytics and funnel tracking", "description": "Set up GA4 and conversion events for course signups before launch.", "status": "todo", "priority": "medium", "dueDate": "2027-02-28", "milestone": "Public launch", "assigneeUserId": 4, "estimatedHours": 8, "owner": "Trainee programmer" }
+      ],
+      "links": [
+        { "label": "Website", "linkType": "website", "url": "https://www.startup100.io", "position": 0 },
+        { "label": "White-label courses", "linkType": "external", "url": "https://www.100tasks.com", "position": 1 },
+        { "label": "Marketing plan", "linkType": "doc", "url": "https://drive.google.com/startup100-marketing", "position": 2 }
+      ],
+      "budgetLines": [
+        { "category": "Software development", "plannedAmount": 16000, "currency": "USD", "effectiveDate": "2026-01-05", "note": "Gap closure and new features" },
+        { "category": "Marketing", "plannedAmount": 10000, "currency": "USD", "effectiveDate": "2026-01-05", "note": "Agency engagement and campaigns" },
+        { "category": "Content production", "plannedAmount": 5000, "currency": "USD", "effectiveDate": "2026-03-01", "note": "Bilingual PDFs and course materials" },
+        { "category": "Hosting & tools", "plannedAmount": 8000, "currency": "USD", "effectiveDate": "2026-01-05", "note": "Infrastructure, SaaS, licensing" }
+      ],
+      "spendRecords": [
+        { "spentOn": "2026-02-10", "amount": 1200, "currency": "USD", "category": "Software development", "note": "Design sprint" },
+        { "spentOn": "2026-03-15", "amount": 2500, "currency": "USD", "category": "Marketing", "note": "Agency kickoff retainer" },
+        { "spentOn": "2026-04-20", "amount": 900, "currency": "USD", "category": "Hosting & tools", "note": "Annual hosting" },
+        { "spentOn": "2026-06-01", "amount": 1500, "currency": "USD", "category": "Content production", "note": "Translation services" }
+      ],
+      "risks": [
+        { "title": "Legacy codebase mismatched with current needs", "description": "The received software may be hard to extend, delaying gap closure.", "severity": "critical", "probability": "high", "ownerUserId": 3, "dueDate": "2026-06-30", "status": "mitigating", "mitigationProgress": 60, "mitigationNote": "Inventorying modules and documenting extension points." },
+        { "title": "Marketing agency delivery slippage", "description": "Launch campaign assets may arrive late, pushing the launch.", "severity": "high", "probability": "medium", "ownerUserId": 1, "dueDate": "2026-12-31", "status": "open", "mitigationProgress": 20, "mitigationNote": "" },
+        { "title": "Bilingual content quality", "description": "Arabic and English materials must meet institute standards before publication.", "severity": "medium", "probability": "medium", "ownerUserId": 4, "dueDate": "2026-08-31", "status": "mitigating", "mitigationProgress": 50, "mitigationNote": "Internal review cycle scheduled." }
+      ],
+      "issues": [
+        { "title": "Repository access not yet granted", "description": "Pending access to the legacy repository and hosting accounts.", "priority": "critical", "ownerUserId": 1, "targetResolutionDate": "2026-02-27", "status": "resolved", "resolutionProgress": 100, "resolutionNote": "Credentials received and documented in the vault." },
+        { "title": "Missing SSL certificate on white-label domain", "description": "The 100tasks.com domain is served over HTTP only.", "priority": "high", "ownerUserId": 3, "targetResolutionDate": "2026-05-15", "status": "mitigating", "resolutionProgress": 40, "resolutionNote": "Applying for the certificate." }
       ]
     },
     {
       "name": "Mawrid",
       "description": "Mawrid is a platform connecting merchants with young people and students to work as affiliate marketers, earning a commission on each successful sale.",
-      "sourcePriority": 1,
       "priority": "critical",
       "websiteUrl": "https://www.mawrid.net",
       "owner": "Pakistani designer and Indian team",
+      "ownerUserId": 3,
       "status": "active",
+      "startDate": "2026-01-12",
+      "deadline": "2026-12-15",
+      "budgetAmount": 28000,
+      "budgetCurrency": "USD",
+      "phases": [
+        { "name": "Design", "position": 0, "startDate": "2026-01-12", "endDate": "2026-05-29" },
+        { "name": "Development", "position": 1, "startDate": "2026-06-01", "endDate": "2026-10-30" },
+        { "name": "Beta & Launch", "position": 2, "startDate": "2026-11-02", "endDate": "2026-12-15" }
+      ],
+      "milestones": [
+        { "title": "Design system complete", "targetDate": "2026-04-30", "status": "done", "phase": "Design" },
+        { "title": "Design handoff to India team", "targetDate": "2026-05-29", "status": "done", "phase": "Design" },
+        { "title": "Core app build complete", "targetDate": "2026-09-30", "status": "in_progress", "phase": "Development" },
+        { "title": "QA audit passed", "targetDate": "2026-10-30", "status": "not_started", "phase": "Development" },
+        { "title": "Beta launch", "targetDate": "2026-12-15", "status": "not_started", "phase": "Beta & Launch" }
+      ],
+      "members": [
+        { "userId": 3, "projectRole": "project_lead" },
+        { "userId": 1, "projectRole": "member" },
+        { "userId": 4, "projectRole": "member" }
+      ],
       "tasks": [
-        "Coordinate with Zain and understand the design work process",
-        "Receive completed design work and organize it in the platform Drive folder",
-        "Coordinate with the India app development team and review work quality",
-        "Audit the platform and apps, document issues, and verify technical fixes"
+        { "title": "Coordinate with Zain and understand the design work process", "description": "Align on design system, tokens, and deliverables with the Pakistani designer.", "status": "done", "priority": "critical", "dueDate": "2026-02-28", "milestone": "Design system complete", "assigneeUserId": 3, "estimatedHours": 16, "owner": "Pakistani designer" },
+        { "title": "Review design deliverables for quality", "description": "Verify screens match the approved style guide before handoff.", "status": "done", "priority": "high", "dueDate": "2026-04-30", "milestone": "Design system complete", "assigneeUserId": 4, "estimatedHours": 20, "owner": "Our team" },
+        { "title": "Package design files for the India team", "description": "Export assets, tokens, and documentation into the shared Drive folder.", "status": "done", "priority": "high", "dueDate": "2026-05-29", "milestone": "Design handoff to India team", "assigneeUserId": 3, "estimatedHours": 10, "owner": "Pakistani designer" },
+        { "title": "Coordinate with the India app development team and review work quality", "description": "Run weekly syncs, review PRs and QA the mobile and web builds.", "status": "in_progress", "priority": "critical", "dueDate": "2026-09-30", "milestone": "Core app build complete", "assigneeUserId": 3, "estimatedHours": 120, "owner": "India team" },
+        { "title": "Audit the platform and apps, document issues, and verify technical fixes", "description": "Create a QA checklist, log findings, and confirm each fix in the release.", "status": "in_progress", "priority": "high", "dueDate": "2026-10-30", "milestone": "QA audit passed", "assigneeUserId": 4, "estimatedHours": 60, "owner": "Our team" },
+        { "title": "Prepare beta onboarding materials for merchants", "description": "Write merchant onboarding guide and marketer signup flow copy.", "status": "todo", "priority": "medium", "dueDate": "2026-11-20", "milestone": "Beta launch", "assigneeUserId": 4, "estimatedHours": 12, "owner": "Our team" }
+      ],
+      "links": [
+        { "label": "Website", "linkType": "website", "url": "https://www.mawrid.net", "position": 0 },
+        { "label": "Drive folder", "linkType": "drive", "url": "https://drive.google.com/mawrid-designs", "position": 1 },
+        { "label": "QA tracker", "linkType": "doc", "url": "https://docs.google.com/mawrid-qa", "position": 2 }
+      ],
+      "budgetLines": [
+        { "category": "Design", "plannedAmount": 6000, "currency": "USD", "effectiveDate": "2026-01-12", "note": "Pakistani designer" },
+        { "category": "Development", "plannedAmount": 14000, "currency": "USD", "effectiveDate": "2026-01-12", "note": "India app team" },
+        { "category": "QA & testing", "plannedAmount": 4000, "currency": "USD", "effectiveDate": "2026-06-01", "note": "Audit and release verification" },
+        { "category": "Hosting & ops", "plannedAmount": 4000, "currency": "USD", "effectiveDate": "2026-06-01", "note": "Infrastructure for beta" }
+      ],
+      "spendRecords": [
+        { "spentOn": "2026-02-15", "amount": 2500, "currency": "USD", "category": "Design", "note": "Design system phase 1" },
+        { "spentOn": "2026-04-25", "amount": 2500, "currency": "USD", "category": "Design", "note": "Design system phase 2" },
+        { "spentOn": "2026-06-10", "amount": 3500, "currency": "USD", "category": "Development", "note": "Sprint 1-3" },
+        { "spentOn": "2026-07-22", "amount": 3500, "currency": "USD", "category": "Development", "note": "Sprint 4-6" }
+      ],
+      "risks": [
+        { "title": "Cross-team communication gaps", "description": "Designer and development team work in different time zones and languages.", "severity": "high", "probability": "high", "ownerUserId": 3, "dueDate": "2026-12-15", "status": "mitigating", "mitigationProgress": 55, "mitigationNote": "Weekly written sync + shared documentation." },
+        { "title": "QA findings delay launch", "description": "A large backlog of audit findings could push the beta date.", "severity": "high", "probability": "medium", "ownerUserId": 4, "dueDate": "2026-10-30", "status": "open", "mitigationProgress": 30, "mitigationNote": "" },
+        { "title": "Merchant adoption in beta", "description": "Invited merchants may onboard slowly, limiting feedback.", "severity": "medium", "probability": "medium", "ownerUserId": 1, "dueDate": "2026-12-15", "status": "open", "mitigationProgress": 10, "mitigationNote": "" }
+      ],
+      "issues": [
+        { "title": "Design export not matching brand tokens", "description": "Some exported colors diverge from the approved brand palette.", "priority": "medium", "ownerUserId": 3, "targetResolutionDate": "2026-03-31", "status": "resolved", "resolutionProgress": 100, "resolutionNote": "Assets regenerated from the design system." },
+        { "title": "Push notifications failing on Android", "description": "Beta testers report notifications not arriving on Android devices.", "priority": "high", "ownerUserId": 3, "targetResolutionDate": "2026-09-15", "status": "mitigating", "resolutionProgress": 45, "resolutionNote": "Investigating FCM configuration." }
       ]
     },
     {
       "name": "Naspir",
       "description": "Naspire is a professional networking platform for businesses, helping them connect and refer business to each other. It combines the advantages of both www.bni.com and www.joinentre.com.",
-      "sourcePriority": 2,
       "priority": "high",
       "websiteUrl": "https://www.naspire.org",
       "owner": "Our Team",
+      "ownerUserId": 3,
       "status": "active",
+      "startDate": "2026-02-01",
+      "deadline": "2026-11-30",
+      "budgetAmount": 22000,
+      "budgetCurrency": "USD",
+      "phases": [
+        { "name": "Strategy", "position": 0, "startDate": "2026-02-01", "endDate": "2026-05-31" },
+        { "name": "Research", "position": 1, "startDate": "2026-04-01", "endDate": "2026-07-31" },
+        { "name": "Build", "position": 2, "startDate": "2026-08-01", "endDate": "2026-11-30" }
+      ],
+      "milestones": [
+        { "title": "Approved business plan", "targetDate": "2026-03-31", "status": "done", "phase": "Strategy" },
+        { "title": "Market study complete", "targetDate": "2026-07-31", "status": "in_progress", "phase": "Research" },
+        { "title": "Minimum viable product", "targetDate": "2026-11-30", "status": "not_started", "phase": "Build" }
+      ],
+      "members": [
+        { "userId": 3, "projectRole": "project_lead" },
+        { "userId": 1, "projectRole": "member" },
+        { "userId": 4, "projectRole": "member" },
+        { "userId": 2, "projectRole": "member" }
+      ],
       "tasks": [
-        "Complete the current approved plan",
-        "Prepare a market study and target-entity file for the first launch phase"
+        { "title": "Complete the current approved plan", "description": "Refine the go-to-market and monetization plan with the core team.", "status": "done", "priority": "high", "dueDate": "2026-03-31", "milestone": "Approved business plan", "assigneeUserId": 3, "estimatedHours": 28, "owner": "Our Team" },
+        { "title": "Prepare a market study and target-entity file for the first launch phase", "description": "Profile target sectors, local B2B referral behaviors, and an entity list.", "status": "in_progress", "priority": "high", "dueDate": "2026-07-31", "milestone": "Market study complete", "assigneeUserId": 4, "estimatedHours": 70, "owner": "Our Team" },
+        { "title": "Benchmark BNIs and Entre models", "description": "Document the feature set and referral mechanics of the two reference platforms.", "status": "in_progress", "priority": "medium", "dueDate": "2026-06-30", "milestone": "Market study complete", "assigneeUserId": 2, "estimatedHours": 24, "owner": "Our Team" },
+        { "title": "Draft platform feature backlog", "description": "Turn the market study into a prioritized MVP feature backlog.", "status": "todo", "priority": "medium", "dueDate": "2026-09-30", "milestone": "Minimum viable product", "assigneeUserId": 3, "estimatedHours": 30, "owner": "Our Team" }
+      ],
+      "links": [
+        { "label": "Website", "linkType": "website", "url": "https://www.naspire.org", "position": 0 },
+        { "label": "Market study", "linkType": "doc", "url": "https://docs.google.com/naspire-market-study", "position": 1 }
+      ],
+      "budgetLines": [
+        { "category": "Research", "plannedAmount": 4000, "currency": "USD", "effectiveDate": "2026-02-01", "note": "Market study and benchmarking" },
+        { "category": "Product development", "plannedAmount": 14000, "currency": "USD", "effectiveDate": "2026-08-01", "note": "MVP build" },
+        { "category": "Marketing", "plannedAmount": 4000, "currency": "USD", "effectiveDate": "2026-08-01", "note": "Launch prep and brand" }
+      ],
+      "spendRecords": [
+        { "spentOn": "2026-03-12", "amount": 1800, "currency": "USD", "category": "Research", "note": "Primary market interviews" },
+        { "spentOn": "2026-05-18", "amount": 1100, "currency": "USD", "category": "Research", "note": "Benchmark subscriptions" }
+      ],
+      "risks": [
+        { "title": "Market study inconclusive", "description": "Findings may be too thin to prioritize the MVP backlog confidently.", "severity": "high", "probability": "medium", "ownerUserId": 4, "dueDate": "2026-07-31", "status": "open", "mitigationProgress": 40, "mitigationNote": "Adding secondary research to supplement interviews." },
+        { "title": "Scope creep on MVP", "description": "Feature backlog may exceed what can ship by November.", "severity": "medium", "probability": "high", "ownerUserId": 3, "dueDate": "2026-11-30", "status": "open", "mitigationProgress": 25, "mitigationNote": "" }
+      ],
+      "issues": [
+        { "title": "Entity contact list partially outdated", "description": "Some contacts in the target-entity file have stale data.", "priority": "medium", "ownerUserId": 4, "targetResolutionDate": "2026-07-15", "status": "mitigating", "resolutionProgress": 60, "resolutionNote": "Verifying contacts in batches." }
       ]
     },
     {
       "name": "Personal Assistance",
       "description": "Assistant to the Employer (Mr. Mohammed Abu Sheikha): Performing executive tasks to assist the Executive Director in managing his professional affairs.",
-      "sourcePriority": 2,
       "priority": "high",
       "websiteUrl": "https://www.drmash.me",
       "owner": null,
+      "ownerUserId": 1,
       "status": "planning",
+      "startDate": "2026-03-01",
+      "deadline": "2026-12-31",
+      "budgetAmount": 8000,
+      "budgetCurrency": "USD",
+      "phases": [
+        { "name": "Foundation", "position": 0, "startDate": "2026-03-01", "endDate": "2026-06-30" },
+        { "name": "Delivery", "position": 1, "startDate": "2026-07-01", "endDate": "2026-12-31" }
+      ],
+      "milestones": [
+        { "title": "Personal brand design", "targetDate": "2026-05-31", "status": "in_progress", "phase": "Foundation" },
+        { "title": "Personal website live", "targetDate": "2026-07-31", "status": "not_started", "phase": "Delivery" },
+        { "title": "Training course published", "targetDate": "2026-10-31", "status": "not_started", "phase": "Delivery" }
+      ],
+      "members": [
+        { "userId": 1, "projectRole": "project_lead" },
+        { "userId": 4, "projectRole": "member" }
+      ],
       "tasks": [
-        "Build a personal brand based on global best practices",
-        "Create a personal website for the new brand",
-        "Enrich the personal website with high-quality articles and content",
-        "Create an AI-powered training course using Synthesia videos",
-        "Establish a user-friendly dashboard for monitoring all projects",
-        "Select secure and sustainable storage for files, data, websites, and work documents"
+        { "title": "Build a personal brand based on global best practices", "description": "Define positioning, messaging, and visual identity for the executive's brand.", "status": "in_progress", "priority": "high", "dueDate": "2026-05-31", "milestone": "Personal brand design", "assigneeUserId": 1, "estimatedHours": 24, "owner": "Mr. Mohammed Abu Sheikha" },
+        { "title": "Create a personal website for the new brand", "description": "Design and launch a clean personal site using the new identity.", "status": "todo", "priority": "high", "dueDate": "2026-07-31", "milestone": "Personal website live", "assigneeUserId": 4, "estimatedHours": 30, "owner": "Assistant" },
+        { "title": "Enrich the personal website with high-quality articles and content", "description": "Write and publish thought-leadership articles and case studies.", "status": "todo", "priority": "medium", "dueDate": "2026-09-30", "milestone": "Personal website live", "assigneeUserId": 1, "estimatedHours": 40, "owner": "Assistant" },
+        { "title": "Create an AI-powered training course using Synthesia videos", "description": "Script, record, and assemble a course with AI video avatars.", "status": "todo", "priority": "medium", "dueDate": "2026-10-31", "milestone": "Training course published", "assigneeUserId": 4, "estimatedHours": 50, "owner": "Assistant" },
+        { "title": "Establish a user-friendly dashboard for monitoring all projects", "description": "Stand up a simple dashboard aggregating status across the employer's projects.", "status": "todo", "priority": "medium", "dueDate": "2026-11-30", "milestone": "Training course published", "assigneeUserId": 4, "estimatedHours": 20, "owner": "Assistant" },
+        { "title": "Select secure and sustainable storage for files, data, websites, and work documents", "description": "Evaluate and migrate to a managed storage and backup solution.", "status": "blocked", "priority": "high", "dueDate": "2026-12-31", "milestone": "Personal website live", "assigneeUserId": 1, "estimatedHours": 12, "owner": "Mr. Mohammed Abu Sheikha", "blocker_note": "Awaiting decision on provider budget." }
+      ],
+      "links": [
+        { "label": "Website", "linkType": "website", "url": "https://www.drmash.me", "position": 0 }
+      ],
+      "budgetLines": [
+        { "category": "Website", "plannedAmount": 3000, "currency": "USD", "effectiveDate": "2026-03-01", "note": "Design and build" },
+        { "category": "Course production", "plannedAmount": 3000, "currency": "USD", "effectiveDate": "2026-07-01", "note": "Synthesia and editing" },
+        { "category": "Tools & storage", "plannedAmount": 2000, "currency": "USD", "effectiveDate": "2026-07-01", "note": "SaaS and hosting" }
+      ],
+      "spendRecords": [
+        { "spentOn": "2026-04-05", "amount": 700, "currency": "USD", "category": "Website", "note": "Brand identity package" }
+      ],
+      "risks": [
+        { "title": "Storage migration disrupts active work", "description": "Moving the employer's files mid-course could interrupt other projects.", "severity": "high", "probability": "medium", "ownerUserId": 1, "dueDate": "2026-12-31", "status": "open", "mitigationProgress": 15, "mitigationNote": "" }
+      ],
+      "issues": [
+        { "title": "Content approval turnaround is slow", "description": "Articles wait on the executive's review for long stretches.", "priority": "medium", "ownerUserId": 1, "targetResolutionDate": "2026-12-31", "status": "open", "resolutionProgress": 10, "resolutionNote": "" }
       ]
     },
     {
       "name": "Phicons",
       "description": "Phicons is a corporate consulting firm that believes true organizational transformation begins from within—with leaders, teams, and corporate culture. It works with public and private companies, government institutions, and civil society organizations in the Middle East and beyond.",
-      "sourcePriority": 3,
       "priority": "medium",
       "websiteUrl": "https://www.phicons.com",
       "owner": null,
+      "ownerUserId": 3,
       "status": "planning",
+      "startDate": "2026-04-15",
+      "deadline": "2026-12-15",
+      "budgetAmount": 6000,
+      "budgetCurrency": "USD",
+      "phases": [
+        { "name": "Brand & Web", "position": 0, "startDate": "2026-04-15", "endDate": "2026-09-30" },
+        { "name": "Profile", "position": 1, "startDate": "2026-08-01", "endDate": "2026-12-15" }
+      ],
+      "milestones": [
+        { "title": "Bilingual website drafted", "targetDate": "2026-09-30", "status": "in_progress", "phase": "Brand & Web" },
+        { "title": "Company profile approved", "targetDate": "2026-12-15", "status": "not_started", "phase": "Profile" }
+      ],
+      "members": [
+        { "userId": 3, "projectRole": "project_lead" },
+        { "userId": 4, "projectRole": "member" }
+      ],
       "tasks": [
-        "Develop the company website in Arabic and English using global references",
-        "Prepare a comprehensive company profile in Arabic and English"
-      ]
+        { "title": "Develop the company website in Arabic and English using global references", "description": "Research leading consulting firms and produce a bilingual corporate site.", "status": "in_progress", "priority": "high", "dueDate": "2026-09-30", "milestone": "Bilingual website drafted", "assigneeUserId": 4, "estimatedHours": 60, "owner": "Phicons team" },
+        { "title": "Prepare a comprehensive company profile in Arabic and English", "description": "Draft a profile covering services, sectors, leadership, and transformation approach.", "status": "todo", "priority": "medium", "dueDate": "2026-12-15", "milestone": "Company profile approved", "assigneeUserId": 3, "estimatedHours": 24, "owner": "Phicons team" }
+      ],
+      "links": [
+        { "label": "Website", "linkType": "website", "url": "https://www.phicons.com", "position": 0 }
+      ],
+      "budgetLines": [
+        { "category": "Web development", "plannedAmount": 4000, "currency": "USD", "effectiveDate": "2026-04-15", "note": "Bilingual site build" },
+        { "category": "Content & profile", "plannedAmount": 2000, "currency": "USD", "effectiveDate": "2026-08-01", "note": "Copywriting and design" }
+      ],
+      "spendRecords": [],
+      "risks": [
+        { "title": "Bilingual content quality", "description": "Arabic and English copy must feel native and consistent.", "severity": "medium", "probability": "medium", "ownerUserId": 4, "dueDate": "2026-09-30", "status": "open", "mitigationProgress": 30, "mitigationNote": "" }
+      ],
+      "issues": []
     },
     {
       "name": "Tawazun Club",
       "description": "Tawazun Club aims to create a balanced community combining learning, work, volunteering, and self-development. It offers subscribers 20 benefits worth more than $2,000 for $99, with an opportunity to work as marketers under conditions that prioritize subscriber value.",
-      "sourcePriority": 3,
       "priority": "medium",
       "websiteUrl": "https://www.tawazun.club",
       "owner": null,
+      "ownerUserId": 2,
       "status": "planning",
+      "startDate": "2026-05-01",
+      "deadline": "2026-12-31",
+      "budgetAmount": 5000,
+      "budgetCurrency": "USD",
+      "phases": [
+        { "name": "Research", "position": 0, "startDate": "2026-05-01", "endDate": "2026-08-31" },
+        { "name": "Content", "position": 1, "startDate": "2026-09-01", "endDate": "2026-12-31" }
+      ],
+      "milestones": [
+        { "title": "Best-practice research complete", "targetDate": "2026-08-31", "status": "in_progress", "phase": "Research" },
+        { "title": "Content library started", "targetDate": "2026-12-31", "status": "not_started", "phase": "Content" }
+      ],
+      "members": [
+        { "userId": 2, "projectRole": "project_lead" },
+        { "userId": 4, "projectRole": "member" }
+      ],
       "tasks": [
-        "Research global best practices and create content aligned with the club's high-value subscription model"
-      ]
+        { "title": "Research global best practices and create content aligned with the club's high-value subscription model", "description": "Study successful membership communities and draft benefit content.", "status": "in_progress", "priority": "high", "dueDate": "2026-08-31", "milestone": "Best-practice research complete", "assigneeUserId": 4, "estimatedHours": 35, "owner": "Tawazun team" }
+      ],
+      "links": [
+        { "label": "Website", "linkType": "website", "url": "https://www.tawazun.club", "position": 0 }
+      ],
+      "budgetLines": [
+        { "category": "Content & research", "plannedAmount": 5000, "currency": "USD", "effectiveDate": "2026-05-01", "note": "Research and content production" }
+      ],
+      "spendRecords": [],
+      "risks": [],
+      "issues": []
     },
     {
       "name": "One Million Arab Marketers",
       "description": "The One Million Professional Arab Marketers initiative aims to address the shortage of professional marketers in the Arab market, create employment for Arab youth, and transfer leading marketing expertise to participants and benefiting organizations.",
-      "sourcePriority": 4,
       "priority": "low",
       "websiteUrl": "https://www.1000000.am",
       "owner": null,
+      "ownerUserId": 2,
       "status": "planning",
+      "startDate": "2026-06-01",
+      "deadline": "2027-03-31",
+      "budgetAmount": 20000,
+      "budgetCurrency": "USD",
+      "phases": [
+        { "name": "Direction", "position": 0, "startDate": "2026-06-01", "endDate": "2026-11-30" },
+        { "name": "Platform", "position": 1, "startDate": "2026-12-01", "endDate": "2027-03-31" }
+      ],
+      "milestones": [
+        { "title": "Approved direction", "targetDate": "2026-11-30", "status": "not_started", "phase": "Direction" },
+        { "title": "Platform MVP", "targetDate": "2027-03-31", "status": "not_started", "phase": "Platform" }
+      ],
+      "members": [
+        { "userId": 2, "projectRole": "project_lead" },
+        { "userId": 3, "projectRole": "member" },
+        { "userId": 4, "projectRole": "member" }
+      ],
       "tasks": [
-        "Research global best practices and create content aligned with the platform direction",
-        "Develop the platform according to the approved direction"
-      ]
+        { "title": "Research global best practices and create content aligned with the platform direction", "description": "Survey marketing academies and define the curriculum vision.", "status": "todo", "priority": "medium", "dueDate": "2026-11-30", "milestone": "Approved direction", "assigneeUserId": 4, "estimatedHours": 40, "owner": "Initiative team" },
+        { "title": "Develop the platform according to the approved direction", "description": "Scope and build the MVP portal for courses and participation.", "status": "todo", "priority": "low", "dueDate": "2027-03-31", "milestone": "Platform MVP", "assigneeUserId": 3, "estimatedHours": 80, "owner": "Initiative team" }
+      ],
+      "links": [
+        { "label": "Website", "linkType": "website", "url": "https://www.1000000.am", "position": 0 }
+      ],
+      "budgetLines": [
+        { "category": "Curriculum & content", "plannedAmount": 8000, "currency": "USD", "effectiveDate": "2026-06-01", "note": "Course design" },
+        { "category": "Platform development", "plannedAmount": 12000, "currency": "USD", "effectiveDate": "2026-12-01", "note": "MVP build" }
+      ],
+      "spendRecords": [],
+      "risks": [
+        { "title": "Large scope for an MVP", "description": "Delivering meaningful employment outcomes is ambitious for the first release.", "severity": "medium", "probability": "medium", "ownerUserId": 3, "dueDate": "2027-03-31", "status": "open", "mitigationProgress": 20, "mitigationNote": "" }
+      ],
+      "issues": []
     },
     {
       "name": "MAP for Jordan",
       "description": "MAP for Jordan is a comprehensive plan containing 36 high-quality projects aimed at creating 36,000 jobs within 36 months in cooperation with government entities.",
-      "sourcePriority": 4,
       "priority": "low",
       "websiteUrl": null,
       "owner": null,
+      "ownerUserId": 3,
       "status": "planning",
+      "startDate": "2026-07-01",
+      "deadline": "2027-06-30",
+      "budgetAmount": 15000,
+      "budgetCurrency": "USD",
+      "phases": [
+        { "name": "Platform", "position": 0, "startDate": "2026-07-01", "endDate": "2027-01-31" },
+        { "name": "Content", "position": 1, "startDate": "2026-10-01", "endDate": "2027-06-30" }
+      ],
+      "milestones": [
+        { "title": "Integrated platform concept", "targetDate": "2027-01-31", "status": "not_started", "phase": "Platform" },
+        { "title": "36-project catalogue", "targetDate": "2027-06-30", "status": "not_started", "phase": "Content" }
+      ],
+      "members": [
+        { "userId": 3, "projectRole": "project_lead" },
+        { "userId": 4, "projectRole": "member" }
+      ],
       "tasks": [
-        "Develop an integrated platform presenting the 36 projects and participation opportunities"
-      ]
+        { "title": "Develop an integrated platform presenting the 36 projects and participation opportunities", "description": "Design a platform that surfaces all 36 projects and lets entities engage.", "status": "todo", "priority": "medium", "dueDate": "2027-01-31", "milestone": "Integrated platform concept", "assigneeUserId": 4, "estimatedHours": 90, "owner": "MAP team" }
+      ],
+      "links": [],
+      "budgetLines": [
+        { "category": "Platform development", "plannedAmount": 15000, "currency": "USD", "effectiveDate": "2026-07-01", "note": "Concept and build" }
+      ],
+      "spendRecords": [],
+      "risks": [
+        { "title": "Government coordination timeline", "description": "Dependencies on government entities could delay the catalogue.", "severity": "medium", "probability": "high", "ownerUserId": 3, "dueDate": "2027-06-30", "status": "open", "mitigationProgress": 15, "mitigationNote": "" }
+      ],
+      "issues": []
     },
     {
       "name": "Bani Jordan",
       "description": "The website is ready and operational.",
-      "sourcePriority": 5,
       "priority": "low",
       "websiteUrl": "https://www.banijordan.org",
       "owner": null,
+      "ownerUserId": 1,
       "status": "active",
+      "startDate": "2026-01-20",
+      "deadline": "2026-09-30",
+      "budgetAmount": 3000,
+      "budgetCurrency": "USD",
+      "phases": [
+        { "name": "Handover", "position": 0, "startDate": "2026-01-20", "endDate": "2026-03-31" },
+        { "name": "Operations", "position": 1, "startDate": "2026-04-01", "endDate": "2026-09-30" }
+      ],
+      "milestones": [
+        { "title": "Website handed over", "targetDate": "2026-03-31", "status": "done", "phase": "Handover" },
+        { "title": "Stable operations", "targetDate": "2026-09-30", "status": "in_progress", "phase": "Operations" }
+      ],
+      "members": [
+        { "userId": 1, "projectRole": "project_lead" },
+        { "userId": 4, "projectRole": "member" }
+      ],
       "tasks": [
-        "Take over the website from the current developer and maintain optimal operation"
-      ]
+        { "title": "Take over the website from the current developer and maintain optimal operation", "description": "Complete the handover and establish monitoring and backup processes.", "status": "in_progress", "priority": "high", "dueDate": "2026-03-31", "milestone": "Website handed over", "assigneeUserId": 1, "estimatedHours": 16, "owner": "Bani Jordan team" },
+        { "title": "Set up uptime monitoring and backups", "description": "Add monitoring and automated backups for the live site.", "status": "todo", "priority": "medium", "dueDate": "2026-05-31", "milestone": "Stable operations", "assigneeUserId": 4, "estimatedHours": 10, "owner": "Bani Jordan team" }
+      ],
+      "links": [
+        { "label": "Website", "linkType": "website", "url": "https://www.banijordan.org", "position": 0 }
+      ],
+      "budgetLines": [
+        { "category": "Hosting & maintenance", "plannedAmount": 3000, "currency": "USD", "effectiveDate": "2026-01-20", "note": "Annual hosting and upkeep" }
+      ],
+      "spendRecords": [
+        { "spentOn": "2026-02-01", "amount": 750, "currency": "USD", "category": "Hosting & maintenance", "note": "Annual hosting renewal" }
+      ],
+      "risks": [
+        { "title": "Single-developer dependency", "description": "Only the handover contact knows the full setup, creating bus-factor risk.", "severity": "high", "probability": "medium", "ownerUserId": 1, "dueDate": "2026-03-31", "status": "resolved", "mitigationProgress": 100, "mitigationNote": "Documentation completed at handover." }
+      ],
+      "issues": []
     }
   ]
 }

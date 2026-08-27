@@ -196,7 +196,7 @@ export async function fetchWorkloadSummary(): Promise<Array<Record<string, unkno
       COUNT(DISTINCT pa.project_id) AS allocated_projects,
       COALESCE(SUM(pa.allocation_percent), 0) AS total_allocation_percent
     FROM users u
-    LEFT JOIN project_member_allocations pa ON pa.user_id = u.id AND pa.starts_on <= CURRENT_DATE AND pa.ends_on >= CURRENT_DATE
+    LEFT JOIN project_member_allocations pa ON pa.user_id = u.id AND pa.starts_on <= CURRENT_DATE::text AND pa.ends_on >= CURRENT_DATE::text
     WHERE u.status = 'active'
     GROUP BY u.id
     ORDER BY u.name
