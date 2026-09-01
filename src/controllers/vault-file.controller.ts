@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { createUploadIntent, deleteFile, downloadFile, finalizeUpload, listEntryFiles } from '../services/vault-file.service';
+import { createUploadIntent, deleteFile, downloadFile, finalizeUpload, listEntryFiles, reviewFile } from '../services/vault-file.service';
 import { parsePositiveId, requireUser } from '../utils/request.util';
 
 export async function listVaultFilesController(request: Request, response: Response, next: NextFunction): Promise<void> {
@@ -16,6 +16,10 @@ export async function finalizeUploadController(request: Request, response: Respo
 
 export async function downloadFileController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try { response.json(await downloadFile(requireUser(request.user), parsePositiveId(request.params.fileId))); } catch (error) { next(error); }
+}
+
+export async function reviewFileController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try { response.json(await reviewFile(requireUser(request.user), parsePositiveId(request.params.fileId), request.body)); } catch (error) { next(error); }
 }
 
 export async function deleteFileController(request: Request, response: Response, next: NextFunction): Promise<void> {

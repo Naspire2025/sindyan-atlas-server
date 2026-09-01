@@ -10,7 +10,7 @@ import {
   setVaultEntryTagsController,
   updateVaultEntryController,
 } from '../controllers/vault.controller';
-import { createUploadIntentController, deleteFileController, downloadFileController, finalizeUploadController, listVaultFilesController } from '../controllers/vault-file.controller';
+import { createUploadIntentController, deleteFileController, downloadFileController, finalizeUploadController, listVaultFilesController, reviewFileController } from '../controllers/vault-file.controller';
 import { requireAuth } from '../middleware/require-auth.middleware';
 
 export const vaultRouter = Router();
@@ -29,4 +29,5 @@ vaultRouter.post('/entries/:entryId/files/upload-intents', requireAuth, createUp
 
 vaultFileRouter.post('/:fileId/finalize', requireAuth, finalizeUploadController);
 vaultFileRouter.post('/:fileId/download', requireAuth, downloadFileController);
+vaultFileRouter.post('/:fileId/review', requireAuth, reviewFileController);
 vaultFileRouter.delete('/:fileId', requireAuth, deleteFileController);

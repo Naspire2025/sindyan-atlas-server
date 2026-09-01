@@ -20,7 +20,7 @@ test('migrations create the access-control, vault, and single-session foundation
   assert.ok(tableNames.has('project_memberships'));
   assert.ok(tableNames.has('vault_files'));
 
-  await createUser({
+  const adminId = await createUser({
     name: 'Test Admin',
     emailNormalized: 'admin@example.test',
     emailDisplay: 'admin@example.test',
@@ -35,7 +35,7 @@ test('migrations create the access-control, vault, and single-session foundation
 
   const leadId = await createUser({ name: 'Project Lead', emailNormalized: 'lead@example.test', emailDisplay: 'lead@example.test', passwordHash: null, role: 'team_member', status: 'active' });
   const memberId = await createUser({ name: 'Team Member', emailNormalized: 'member@example.test', emailDisplay: 'member@example.test', passwordHash: null, role: 'team_member', status: 'active' });
-  const admin = { id: 1, name: 'Test Admin', email: 'admin@example.test', role: 'admin' as const, status: 'active' as const };
+  const admin = { id: adminId, name: 'Test Admin', email: 'admin@example.test', role: 'admin' as const, status: 'active' as const };
   const lead = { id: leadId, name: 'Project Lead', email: 'lead@example.test', role: 'team_member' as const, status: 'active' as const };
   const member = { id: memberId, name: 'Team Member', email: 'member@example.test', role: 'team_member' as const, status: 'active' as const };
   const project = await createProject(admin, { name: 'Role verification project' });

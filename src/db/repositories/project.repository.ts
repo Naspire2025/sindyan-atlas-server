@@ -77,6 +77,46 @@ export async function listProjectMilestones(projectId: number): Promise<ProjectR
   return result.rows as ProjectRow[];
 }
 
+export async function findMilestoneDetail(milestoneId: number): Promise<ProjectRow | undefined> {
+  const result = await pool.query(`
+    SELECT milestones.*, project_phases.name AS phase_name,
+      projects.name AS project_name
+    FROM milestones
+    LEFT JOIN project_phases ON project_phases.id = milestones.phase_id
+    JOIN projects ON projects.id = milestones.project_id
+    WHERE milestones.id = $1
+  `, [milestoneId]);
+  return result.rows[0] as ProjectRow | undefined;
+}
+
+export async function listMilestoneTasks(milestoneId: number): Promise<ProjectRow[]> {
+  const result = await pool.query(`
+    SELECT tasks.id, tasks.title, tasks.status, tasks.priority, tasks.due_date,
+      tasks.assignee_user_id, tasks.project_id, users.name AS assignee_name,
+      projects.name AS project_name
+    FROM tasks
+    JOIN projects ON projects.id = tasks.project_id
+    LEFT JOIN users ON users.id = tasks.assignee_user_id
+    WHERE tasks.milestone_id = $1
+    ORDER BY tasks.due_date ASC, tasks.id ASC
+  `, [milestoneId]);
+  return result.rows as ProjectRow[];
+}
+
+export async function listProjectMilestoneMembers(milestoneId: number): Promise<ProjectRow[]> {
+  const result = await pool.query(`
+    SELECT DISTINCT users.id AS user_id, users.name, users.email_display AS email,
+      project_memberships.project_role
+    FROM tasks
+    JOIN project_memberships ON project_memberships.user_id = tasks.assignee_user_id
+      AND project_memberships.project_id = tasks.project_id
+    JOIN users ON users.id = tasks.assignee_user_id
+    WHERE tasks.milestone_id = $1 AND tasks.assignee_user_id IS NOT NULL
+    ORDER BY users.name
+  `, [milestoneId]);
+  return result.rows as ProjectRow[];
+}
+
 export async function listProjectMembers(projectId: number): Promise<ProjectRow[]> {
   const result = await pool.query(`
     SELECT users.id, users.id AS user_id, project_memberships.project_id,

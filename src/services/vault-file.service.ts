@@ -5,7 +5,6 @@ import {
   listVaultFiles,
   createVaultFile,
   updateVaultFileStatus,
-  deleteVaultFile,
   writeVaultAuditLog,
 } from '../db/repositories/vault.repository';
 import { generateStorageKey, isAllowedMimeType, isWithinSizeLimit, createSignedUploadUrl, verifyObjectExists, createSignedDownloadUrl, deleteObject, isR2Configured } from './r2.service';
@@ -21,6 +20,26 @@ function requiredText(value: unknown, field: string): string {
 function requiredNumber(value: unknown, field: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) throw new AppError(400, `${field} must be a positive integer.`);
   return value;
+}
+
+function normalizeFilename(value: unknown): string {
+  const filename = requiredText(value, 'filename').replace(/[\\/]+/g, '-').replace(/\s+/g, ' ');
+  if (filename.length > 255) throw new AppError(400, 'filename must be 255 characters or fewer.');
+  if (/[\u0000-\u001F\u007F]/u.test(filename)) throw new AppError(400, 'filename contains unsupported characters.');
+  if (filename === '.' || filename === '..') throw new AppError(400, 'filename is invalid.');
+  return filename;
+}
+
+function optionalChecksum(value: unknown): string | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || !/^[a-f0-9]{64}$/i.test(value)) {
+    throw new AppError(400, 'checksum_sha256 must be a valid SHA-256 hex digest.');
+  }
+  return value.toLowerCase();
+}
+
+function canDeleteFile(user: AuthenticatedUser, file: Record<string, unknown>): boolean {
+  return user.role === 'admin' || (file.storage_status === 'pending' && Number(file.uploaded_by_user_id) === user.id);
 }
 
 async function requireFileEntryAccess(user: AuthenticatedUser, entryId: number) {
@@ -60,7 +79,7 @@ export async function createUploadIntent(user: AuthenticatedUser, entryId: numbe
   if (entry.entry_type !== 'file') throw new AppError(400, 'Only file entries can have uploads.');
 
   const input = body as Record<string, unknown>;
-  const filename = requiredText(input.filename, 'filename');
+  const filename = normalizeFilename(input.filename);
   const contentType = requiredText(input.content_type, 'content_type');
   const sizeBytes = requiredNumber(input.size_bytes, 'size_bytes');
 
@@ -81,7 +100,7 @@ export async function createUploadIntent(user: AuthenticatedUser, entryId: numbe
   });
 
   await recordAudit(entryId, fileId, user.id, 'upload_intent');
-  return { file_id: fileId, upload_url: signedUploadUrl, storage_key: storageKey };
+  return { file_id: fileId, upload_url: signedUploadUrl, storage_status: 'pending' };
 }
 
 export async function finalizeUpload(user: AuthenticatedUser, fileId: number, body: unknown) {
@@ -91,7 +110,7 @@ export async function finalizeUpload(user: AuthenticatedUser, fileId: number, bo
   await requireFileEntryAccess(user, Number(file.vault_entry_id));
 
   const input = body as Record<string, unknown>;
-  const checksum = input.checksum_sha256 as string | undefined;
+  const checksum = optionalChecksum(input.checksum_sha256);
 
   const exists = await verifyObjectExists(String(file.storage_key), Number(file.size_bytes));
   if (!exists) throw new AppError(400, 'Uploaded file not found or size mismatch.');
@@ -113,26 +132,46 @@ export async function downloadFile(user: AuthenticatedUser, fileId: number) {
 }
 
 export async function deleteFile(user: AuthenticatedUser, fileId: number): Promise<void> {
-  requireAdmin(user);
   const file = await requireVaultFile(fileId);
+  if (!canDeleteFile(user, file)) throw new AppError(403, 'Administrator access is required.');
 
   try {
     await deleteObject(String(file.storage_key));
   } catch {
-    // Best-effort R2 deletion; mark deleted regardless
+    await updateVaultFileStatus(fileId, { storageStatus: 'deletion_pending' });
+    await recordAudit(Number(file.vault_entry_id), fileId, user.id, 'file_deletion_pending');
+    throw new AppError(503, 'File deletion could not be confirmed. It has been queued for retry.');
   }
 
   await updateVaultFileStatus(fileId, { storageStatus: 'deleted' });
   await recordAudit(Number(file.vault_entry_id), fileId, user.id, 'file_deleted');
 }
 
-export async function approveScanResult(fileId: number, status: 'available' | 'rejected'): Promise<void> {
+export async function reviewFile(user: AuthenticatedUser, fileId: number, body: unknown) {
+  requireAdmin(user);
+  const input = body as Record<string, unknown>;
+  if (input.status !== 'available' && input.status !== 'rejected') {
+    throw new AppError(400, 'status must be available or rejected.');
+  }
+  await approveScanResult(fileId, input.status, user.id);
+  return { file_id: fileId, storage_status: input.status };
+}
+
+export async function approveScanResult(fileId: number, status: 'available' | 'rejected', actorUserId?: number): Promise<void> {
   const file = await requireVaultFile(fileId);
-  if (file.storage_status !== 'quarantined') return;
+  if (file.storage_status !== 'quarantined') throw new AppError(409, 'File is not awaiting review.');
   if (status === 'available') {
     await updateVaultFileStatus(fileId, { storageStatus: 'available' });
+    if (actorUserId) await recordAudit(Number(file.vault_entry_id), fileId, actorUserId, 'file_approved');
   } else {
-    await updateVaultFileStatus(fileId, { storageStatus: 'rejected' });
-    deleteObject(String(file.storage_key)).catch(() => {});
+    try {
+      await deleteObject(String(file.storage_key));
+      await updateVaultFileStatus(fileId, { storageStatus: 'rejected' });
+      if (actorUserId) await recordAudit(Number(file.vault_entry_id), fileId, actorUserId, 'file_rejected');
+    } catch {
+      await updateVaultFileStatus(fileId, { storageStatus: 'deletion_pending' });
+      if (actorUserId) await recordAudit(Number(file.vault_entry_id), fileId, actorUserId, 'file_rejection_deletion_pending');
+      throw new AppError(503, 'Rejected file deletion could not be confirmed. It has been queued for retry.');
+    }
   }
 }

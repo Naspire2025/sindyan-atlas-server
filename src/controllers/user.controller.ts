@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { listInvitations } from '../db/repositories/invitation.repository';
-import { getOrganizationUser, listOrganizationUsers, updateOrganizationUser } from '../services/user.service';
+import { getMemberSummary, getOrganizationUser, listOrganizationUsers, updateOrganizationUser } from '../services/user.service';
 import { parsePositiveId, requireUser } from '../utils/request.util';
 
 export async function listUsersController(request: Request, response: Response, next: NextFunction): Promise<void> {
@@ -9,6 +9,10 @@ export async function listUsersController(request: Request, response: Response, 
 
 export async function getUserController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try { response.json(await getOrganizationUser(requireUser(request.user), parsePositiveId(request.params.id))); } catch (error) { next(error); }
+}
+
+export async function getMemberSummaryController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try { response.json(await getMemberSummary(requireUser(request.user), parsePositiveId(request.params.userId))); } catch (error) { next(error); }
 }
 
 export async function updateUserController(request: Request, response: Response, next: NextFunction): Promise<void> {

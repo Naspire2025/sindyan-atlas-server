@@ -20,7 +20,7 @@ import {
 import { decryptSecret, encryptSecret, isEncryptionConfigured } from './encryption.service';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
-import { requireAdmin, requireProjectAccess } from './project-access.service';
+import { requireAdmin, requireProjectAccess, requireProjectLead } from './project-access.service';
 
 const ENTRY_TYPES = new Set(['external_link', 'markdown_note', 'credential', 'secret_key', 'file']);
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -159,7 +159,14 @@ export async function updateEntry(user: AuthenticatedUser, entryId: number, body
   const markdownContent = input.markdown_content === undefined ? (entry.markdown_content as string) ?? null : optionalText(input.markdown_content);
   const externalUrl = input.external_url === undefined ? (entry.external_url as string) ?? null : optionalText(input.external_url);
   const secretValue = input.secret_value === undefined ? undefined : requiredText(input.secret_value, 'secret_value');
+  const previousProjectId = entry.project_id ? Number(entry.project_id) : null;
+  const projectId = input.project_id === undefined ? previousProjectId : optionalIdentifier(input.project_id);
   if (entry.entry_type === 'external_link' && externalUrl) validateUrlHttps(externalUrl, 'external_url');
+  if (projectId) await requireProjectAccess(user, projectId);
+  if (input.project_id !== undefined && previousProjectId !== projectId) {
+    if (previousProjectId) await requireProjectLead(user, previousProjectId);
+    if (projectId) await requireProjectLead(user, projectId);
+  }
 
   if (secretValue !== undefined && (entry.entry_type !== 'credential' && entry.entry_type !== 'secret_key')) {
     throw new AppError(400, 'secret_value is only valid for credentials and secret keys.');
@@ -170,8 +177,12 @@ export async function updateEntry(user: AuthenticatedUser, entryId: number, body
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await updateVaultEntry(entryId, { title, category, markdownContent, externalUrl });
+    await updateVaultEntry(entryId, { title, category, markdownContent, externalUrl, projectId });
     if (encrypted) await upsertVaultSecret(entryId, { encryptedValue: encrypted.encryptedValue, keyVersion: encrypted.keyVersion, nonce: encrypted.nonce, authTag: encrypted.authTag });
+    if (input.project_id !== undefined && previousProjectId !== projectId) {
+      const action = projectId === null ? 'project_unlinked' : previousProjectId === null ? 'project_linked' : 'project_reassigned';
+      await recordAudit(entryId, user.id, action, { previous_project_id: previousProjectId, project_id: projectId });
+    }
     await recordAudit(entryId, user.id, 'updated');
     await client.query('COMMIT');
   } catch (e) {

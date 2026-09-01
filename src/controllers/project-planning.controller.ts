@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { createProjectLink, createProjectMilestone, createProjectPhase, deleteMilestone, deleteProjectLink, deleteProjectPhase, listProjectLinks, listProjectMilestones, listProjectPhases, updateMilestone, updateProjectLink, updateProjectPhase } from '../services/project-planning.service';
+import { createProjectLink, createProjectMilestone, createProjectPhase, deleteMilestone, deleteProjectLink, deleteProjectPhase, getMilestone, listProjectLinks, listProjectMilestones, listProjectPhases, updateMilestone, updateProjectLink, updateProjectPhase } from '../services/project-planning.service';
 import { parsePositiveId, requireUser } from '../utils/request.util';
 
 function projectId(request: Request): number { return parsePositiveId(request.params.projectId); }
@@ -13,6 +13,7 @@ export async function createPhaseController(request: Request, response: Response
 export async function updatePhaseController(request: Request, response: Response, next: NextFunction): Promise<void> { try { response.json(await updateProjectPhase(requireUser(request.user), projectId(request), parsePositiveId(request.params.phaseId), request.body)); } catch (error) { next(error); } }
 export async function deletePhaseController(request: Request, response: Response, next: NextFunction): Promise<void> { try { await deleteProjectPhase(requireUser(request.user), projectId(request), parsePositiveId(request.params.phaseId)); response.status(204).send(); } catch (error) { next(error); } }
 export async function listMilestonesController(request: Request, response: Response, next: NextFunction): Promise<void> { try { response.json(await listProjectMilestones(requireUser(request.user), projectId(request))); } catch (error) { next(error); } }
+export async function getMilestoneController(request: Request, response: Response, next: NextFunction): Promise<void> { try { response.json(await getMilestone(requireUser(request.user), parsePositiveId(request.params.id))); } catch (error) { next(error); } }
 export async function createMilestoneController(request: Request, response: Response, next: NextFunction): Promise<void> { try { response.status(201).json(await createProjectMilestone(requireUser(request.user), projectId(request), request.body)); } catch (error) { next(error); } }
 export async function updateMilestoneController(request: Request, response: Response, next: NextFunction): Promise<void> { try { response.json(await updateMilestone(requireUser(request.user), parsePositiveId(request.params.id), request.body)); } catch (error) { next(error); } }
 export async function deleteMilestoneController(request: Request, response: Response, next: NextFunction): Promise<void> { try { await deleteMilestone(requireUser(request.user), parsePositiveId(request.params.id)); response.status(204).send(); } catch (error) { next(error); } }

@@ -1,6 +1,6 @@
 import { pool } from './connection';
 
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 async function columnExists(tableName: string, columnName: string): Promise<boolean> {
   const { rows } = await pool.query(
@@ -334,7 +334,7 @@ async function createSchema(): Promise<void> {
       content_type TEXT NOT NULL,
       size_bytes INTEGER NOT NULL CHECK (size_bytes >= 0),
       checksum_sha256 TEXT,
-      storage_status TEXT NOT NULL CHECK (storage_status IN ('pending', 'quarantined', 'available', 'rejected', 'deleted')),
+      storage_status TEXT NOT NULL CHECK (storage_status IN ('pending', 'quarantined', 'available', 'rejected', 'deleted', 'deletion_pending')),
       uploaded_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
       uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       available_at TIMESTAMPTZ,
@@ -376,6 +376,13 @@ async function createIndexes(): Promise<void> {
 const SEQUENTIAL_MIGRATIONS: Record<number, () => Promise<void>> = {
   2: async () => {
     await pool.query('ALTER TABLE sessions DROP COLUMN IF EXISTS csrf_token_hash');
+  },
+  3: async () => {
+    await pool.query(`
+      ALTER TABLE vault_files DROP CONSTRAINT IF EXISTS vault_files_storage_status_check;
+      ALTER TABLE vault_files ADD CONSTRAINT vault_files_storage_status_check
+        CHECK (storage_status IN ('pending', 'quarantined', 'available', 'rejected', 'deleted', 'deletion_pending'));
+    `);
   },
 };
 

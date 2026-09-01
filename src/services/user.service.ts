@@ -1,5 +1,6 @@
-import { countActiveAdmins, findUserById, listUsers, updateUserAccount } from '../db/repositories/user.repository';
+import { countActiveAdmins, findMemberAssignments, findMemberProjects, findUserById, listUsers, updateUserAccount } from '../db/repositories/user.repository';
 import { revokeActiveSessionsForUser } from '../db/repositories/session.repository';
+import { pool } from '../db/connection';
 import type { AuthenticatedUser, OrganizationRole, UserStatus } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { requireAdmin } from './project-access.service';
@@ -32,6 +33,34 @@ export async function getOrganizationUser(actor: AuthenticatedUser, userId: numb
   const user = await findUserById(userId);
   if (!user) throw new AppError(404, 'User unavailable.');
   return user;
+}
+
+async function canViewMember(actor: AuthenticatedUser, userId: number): Promise<void> {
+  if (actor.role === 'admin' || actor.id === userId) return;
+  const sharedResult = await pool.query(`
+    SELECT 1
+    FROM project_memberships actor
+    JOIN project_memberships target ON target.project_id = actor.project_id
+    WHERE actor.user_id = $1 AND target.user_id = $2
+    LIMIT 1
+  `, [actor.id, userId]);
+  if (!sharedResult.rows[0]) throw new AppError(404, 'Member unavailable.');
+}
+
+export async function getMemberSummary(actor: AuthenticatedUser, userId: number) {
+  await canViewMember(actor, userId);
+  const user = await findUserById(userId);
+  if (!user) throw new AppError(404, 'User unavailable.');
+  const [projects, assignments] = await Promise.all([findMemberProjects(userId), findMemberAssignments(userId)]);
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    projects,
+    assignments,
+  };
 }
 
 export async function updateOrganizationUser(actor: AuthenticatedUser, userId: number, body: unknown): Promise<AuthenticatedUser> {

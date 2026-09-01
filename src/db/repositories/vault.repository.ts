@@ -39,9 +39,9 @@ export async function updateVaultEntry(entryId: number, input: Record<string, un
   await pool.query(
     `UPDATE vault_entries
      SET title = $1, category = $2, markdown_content = $3,
-         external_url = $4, updated_at = NOW()
-     WHERE id = $5`,
-    [input.title, input.category, input.markdownContent, input.externalUrl, entryId],
+         external_url = $4, project_id = $5, updated_at = NOW()
+     WHERE id = $6`,
+    [input.title, input.category, input.markdownContent, input.externalUrl, input.projectId, entryId],
   );
 }
 
@@ -113,7 +113,7 @@ export async function setVaultEntryTags(entryId: number, tagIds: number[]): Prom
 
 export async function listVaultFiles(entryId: number): Promise<VaultFileRow[]> {
   const result = await pool.query(
-    `SELECT id, original_filename, content_type, size_bytes, storage_status, uploaded_at, available_at
+    `SELECT id, vault_entry_id, original_filename, content_type, size_bytes, storage_status, uploaded_by_user_id, uploaded_at, available_at
      FROM vault_files WHERE vault_entry_id = $1 ORDER BY uploaded_at ASC`,
     [entryId],
   );
@@ -143,17 +143,36 @@ export async function createVaultFile(input: Record<string, unknown>): Promise<n
 }
 
 export async function updateVaultFileStatus(fileId: number, input: { storageStatus: string; checksum?: string | null }): Promise<void> {
+  const shouldUpdateChecksum = Object.prototype.hasOwnProperty.call(input, 'checksum');
+  const parameters = [input.storageStatus, shouldUpdateChecksum, input.checksum ?? null, fileId];
   if (input.storageStatus === 'available') {
     await pool.query(
-      "UPDATE vault_files SET storage_status = $1, checksum_sha256 = $2, available_at = NOW() WHERE id = $3",
-      [input.storageStatus, input.checksum, fileId],
+      'UPDATE vault_files SET storage_status = $1, checksum_sha256 = CASE WHEN $2 THEN $3 ELSE checksum_sha256 END, available_at = NOW() WHERE id = $4',
+      parameters,
+    );
+  } else if (input.storageStatus === 'deleted') {
+    await pool.query(
+      'UPDATE vault_files SET storage_status = $1, checksum_sha256 = CASE WHEN $2 THEN $3 ELSE checksum_sha256 END, deleted_at = NOW() WHERE id = $4',
+      parameters,
     );
   } else {
     await pool.query(
-      'UPDATE vault_files SET storage_status = $1, checksum_sha256 = $2 WHERE id = $3',
-      [input.storageStatus, input.checksum, fileId],
+      'UPDATE vault_files SET storage_status = $1, checksum_sha256 = CASE WHEN $2 THEN $3 ELSE checksum_sha256 END WHERE id = $4',
+      parameters,
     );
   }
+}
+
+export async function listStalePendingVaultFiles(olderThanHours: number): Promise<VaultFileRow[]> {
+  const result = await pool.query(
+    `SELECT * FROM vault_files
+     WHERE storage_status IN ('pending', 'deletion_pending')
+       AND uploaded_at < NOW() - ($1::text || ' hours')::interval
+     ORDER BY uploaded_at ASC
+     LIMIT 100`,
+    [olderThanHours],
+  );
+  return result.rows as VaultFileRow[];
 }
 
 export async function deleteVaultFile(fileId: number): Promise<void> {

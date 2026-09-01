@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createLinkController, createMilestoneController, createPhaseController, deleteLinkController, deleteMilestoneController, deletePhaseController, listLinksController, listMilestonesController, listPhasesController, updateLinkController, updateMilestoneController, updatePhaseController } from '../controllers/project-planning.controller';
+import { createLinkController, createMilestoneController, createPhaseController, deleteLinkController, deleteMilestoneController, deletePhaseController, getMilestoneController, listLinksController, listMilestonesController, listPhasesController, updateLinkController, updateMilestoneController, updatePhaseController } from '../controllers/project-planning.controller';
 import { createBudgetLineController, createSpendRecordController, financialSummaryController, listBudgetLinesController, listSpendRecordsController } from '../controllers/finance.controller';
 import { createIssueController, createRiskController, listIssuesController, listRisksController } from '../controllers/risk-issue.controller';
 import { projectAllocationsController } from '../controllers/resource.controller';
@@ -28,5 +28,6 @@ projectPlanningRouter.post('/risks', requireAuth, createRiskController);
 projectPlanningRouter.get('/issues', requireAuth, listIssuesController);
 projectPlanningRouter.post('/issues', requireAuth, createIssueController);
 projectPlanningRouter.get('/allocations', requireAuth, projectAllocationsController);
+milestoneRouter.get('/:id', requireAuth, getMilestoneController);
 milestoneRouter.patch('/:id', requireAuth, updateMilestoneController);
 milestoneRouter.delete('/:id', requireAuth, deleteMilestoneController);

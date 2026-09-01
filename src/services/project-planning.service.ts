@@ -1,4 +1,5 @@
 import { pool } from '../db/connection';
+import { findMilestoneDetail, listMilestoneTasks, listProjectMilestoneMembers } from '../db/repositories/project.repository';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { isIsoDate } from '../utils/date.util';
@@ -171,6 +172,19 @@ export async function updateMilestone(user: AuthenticatedUser, milestoneId: numb
   ]);
   const updatedResult = await pool.query('SELECT * FROM milestones WHERE id = $1', [milestoneId]);
   return updatedResult.rows[0];
+}
+
+export async function getMilestone(user: AuthenticatedUser, milestoneId: number): Promise<Record<string, unknown>> {
+  const milestone = await findMilestoneDetail(milestoneId);
+  if (!milestone) throw new AppError(404, 'Milestone unavailable.');
+  const projectId = Number(milestone.project_id);
+  await requireProjectAccess(user, projectId);
+  const [tasks, members] = await Promise.all([
+    listMilestoneTasks(milestoneId),
+    listProjectMilestoneMembers(milestoneId),
+  ]);
+  const done = tasks.filter((task) => task.status === 'done').length;
+  return { ...milestone, project_id: projectId, phase_name: milestone.phase_name, project_name: milestone.project_name, tasks, members, progress: tasks.length ? Math.round((done / tasks.length) * 100) : 0 };
 }
 
 export async function deleteMilestone(user: AuthenticatedUser, milestoneId: number): Promise<void> {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUserController, listInvitationsController, listUsersController, updateUserController } from '../controllers/user.controller';
+import { getMemberSummaryController, getUserController, listInvitationsController, listUsersController, updateUserController } from '../controllers/user.controller';
 import { createAvailabilityController, createCapacityProfileController, deleteAvailabilityController, listAvailabilityController, listCapacityProfilesController, updateAvailabilityController, updateCapacityProfileController } from '../controllers/resource.controller';
 import { requireAuth } from '../middleware/require-auth.middleware';
 
@@ -7,6 +7,7 @@ export const userRouter = Router();
 
 userRouter.get('/', requireAuth, listUsersController);
 userRouter.get('/invitations', requireAuth, listInvitationsController);
+userRouter.get('/:userId/summary', requireAuth, getMemberSummaryController);
 userRouter.get('/:id', requireAuth, getUserController);
 userRouter.patch('/:id', requireAuth, updateUserController);
 

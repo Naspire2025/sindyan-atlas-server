@@ -69,11 +69,14 @@ BOOTSTRAP_ADMIN_PASSWORD=Admin123!@#
 # Vault encryption (64-char hex string for AES-256-GCM)
 VAULT_ENCRYPTION_KEY=<64-char-hex>
 
-# Optional: S3 file storage
-# R2_ACCOUNT_ID=
-# R2_ACCESS_KEY_ID=
-# R2_SECRET_ACCESS_KEY=
-# R2_BUCKET_NAME=
+# Optional: private Cloudflare R2 file storage for vault uploads.
+# Set FILE_STORAGE_ENABLED=true only when all four R2 values are present.
+# The bucket should remain private; Atlas issues short-lived signed URLs.
+FILE_STORAGE_ENABLED=false
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET_NAME=
 
 # Optional: Invitation delivery webhook
 # INVITATION_DELIVERY_WEBHOOK_URL=
