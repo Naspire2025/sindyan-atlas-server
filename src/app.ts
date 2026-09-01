@@ -17,6 +17,7 @@ import { vaultRouter, vaultFileRouter } from './routes/vault.routes';
 import { listInvitationsController } from './controllers/user.controller';
 import { requireAuth } from './middleware/require-auth.middleware';
 import { applySecurityHeaders } from './middleware/security-headers.middleware';
+import { requestLogger } from './middleware/request-logger.middleware';
 
 function isAllowedOrigin(origin: string | undefined): boolean {
   return origin === undefined || env.frontendOrigins.includes(origin);
@@ -38,6 +39,7 @@ export function createApp() {
   }));
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
+  app.use(requestLogger);
 
   app.get('/api/health', (_request, response) => response.json({ status: 'ok' }));
   app.use('/api/auth', authRouter);
