@@ -55,11 +55,12 @@ DATABASE_URL=postgresql://user:password@localhost:5432/atlas
 SESSION_IDLE_HOURS=12
 SESSION_ABSOLUTE_DAYS=14
 SESSION_COOKIE_NAME=atlas_session
-SESSION_COOKIE_SAME_SITE=lax
 TASK_STALLED_DAYS=7
 
 # CORS
 FRONTEND_ORIGINS=http://localhost:5173,http://localhost:5174
+# Trust proxy is hardcoded to 1 (single reverse proxy hop, as on Render) so
+# rate limiting and cookie handling work behind a proxy automatically.
 
 # Bootstrap admin (created on first run if no admin exists)
 BOOTSTRAP_ADMIN_EMAIL=admin@example.com
@@ -196,7 +197,8 @@ Migrations run automatically on server start via `runMigrations()`.
 
 - Passwords hashed with Argon2 (never stored in plaintext)
 - Vault secrets encrypted with AES-256-GCM; encryption key never logged
-- httpOnly session cookies with configurable SameSite
+- httpOnly session cookies (SameSite=Lax outside production; SameSite=None + Secure in production for cross-site frontend/API origins)
+- Cross-site deployment requires the frontend origin in `FRONTEND_ORIGINS` and third-party cookies allowed in the browser; same-site hosting is preferred to avoid third-party-cookie blocking
 - CSRF tokens required for all state-changing requests
 - Origin header validation against allowed frontend origins
 - Rate limiting on login endpoint (10 attempts per 15 minutes)

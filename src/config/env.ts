@@ -17,18 +17,12 @@ function readOrigins(): string[] {
   return origins;
 }
 
-function readCookieSameSite(): 'lax' | 'none' {
-  const value = process.env.SESSION_COOKIE_SAME_SITE ?? (process.env.NODE_ENV === 'production' ? 'none' : 'lax');
-  if (value === 'lax' || value === 'none') return value;
-  throw new Error('SESSION_COOKIE_SAME_SITE must be lax or none.');
-}
-
 export const env = {
   host: process.env.HOST ?? '127.0.0.1',
   port: readPositiveInteger('PORT', 3001),
   isProduction: process.env.NODE_ENV === 'production',
   frontendOrigins: readOrigins(),
-  sessionCookieSameSite: readCookieSameSite(),
+  trustProxy: 1,
   sessionCookieName: process.env.SESSION_COOKIE_NAME ?? 'atlas_session',
   sessionIdleHours: readPositiveInteger('SESSION_IDLE_HOURS', 12),
   sessionAbsoluteDays: readPositiveInteger('SESSION_ABSOLUTE_DAYS', 14),

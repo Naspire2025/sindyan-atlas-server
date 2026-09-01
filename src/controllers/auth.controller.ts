@@ -10,7 +10,7 @@ function sessionCookieOptions(expiresAt: Date): CookieOptions {
   return {
     httpOnly: true,
     secure: env.isProduction,
-    sameSite: env.sessionCookieSameSite,
+    sameSite: env.isProduction ? 'none' : 'lax',
     expires: expiresAt,
     path: '/',
   };
