@@ -365,6 +365,9 @@ async function createIndexes(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_vault_files_entry_status ON vault_files(vault_entry_id, storage_status);
     CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
     CREATE INDEX IF NOT EXISTS idx_tasks_assignee_project ON tasks(assignee_user_id, project_id);
+    CREATE INDEX IF NOT EXISTS idx_tasks_project_due ON tasks(project_id, due_date);
+    CREATE INDEX IF NOT EXISTS idx_tasks_assignee_due ON tasks(assignee_user_id, due_date);
+    CREATE INDEX IF NOT EXISTS idx_tasks_milestone_status ON tasks(milestone_id, status);
     CREATE INDEX IF NOT EXISTS idx_milestones_project ON milestones(project_id);
     CREATE INDEX IF NOT EXISTS idx_team_project ON team_members(project_id);
     CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id, created_at);

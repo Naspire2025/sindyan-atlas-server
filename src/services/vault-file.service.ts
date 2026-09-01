@@ -27,7 +27,7 @@ async function requireFileEntryAccess(user: AuthenticatedUser, entryId: number) 
   const entry = await findVaultEntry(entryId);
   if (!entry || entry.archived_at) throw new AppError(404, 'Vault entry unavailable.');
   if (entry.project_id) {
-    requireProjectAccess(user, Number(entry.project_id));
+    await requireProjectAccess(user, Number(entry.project_id));
   }
   return entry;
 }

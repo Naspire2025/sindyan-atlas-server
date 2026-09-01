@@ -5,25 +5,30 @@ export type TaskRow = Record<string, unknown> & {
   project_id: number;
   assignee_user_id: number | null;
   status: string;
+  row_version: string;
 };
 
 export async function listTasksForUser(userId: number, isAdmin: boolean): Promise<TaskRow[]> {
   if (isAdmin) {
     const result = await pool.query(`
-      SELECT tasks.*, projects.name AS project_name, users.name AS assignee_name
+      SELECT tasks.*, projects.name AS project_name, users.name AS assignee_name,
+        milestones.title AS milestone_title
       FROM tasks
       JOIN projects ON projects.id = tasks.project_id
       LEFT JOIN users ON users.id = tasks.assignee_user_id
+      LEFT JOIN milestones ON milestones.id = tasks.milestone_id
       ORDER BY tasks.due_date ASC, tasks.id ASC
     `);
     return result.rows as TaskRow[];
   }
 
   const result = await pool.query(`
-    SELECT tasks.*, projects.name AS project_name, users.name AS assignee_name
+    SELECT tasks.*, projects.name AS project_name, users.name AS assignee_name,
+      milestones.title AS milestone_title
     FROM tasks
     JOIN projects ON projects.id = tasks.project_id
     LEFT JOIN users ON users.id = tasks.assignee_user_id
+    LEFT JOIN milestones ON milestones.id = tasks.milestone_id
     WHERE tasks.assignee_user_id = $1 AND tasks.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $2)
     ORDER BY tasks.due_date ASC, tasks.id ASC
   `, [userId, userId]);
@@ -32,7 +37,8 @@ export async function listTasksForUser(userId: number, isAdmin: boolean): Promis
 
 export async function findTask(taskId: number): Promise<TaskRow | undefined> {
   const result = await pool.query(`
-    SELECT tasks.*, projects.name AS project_name, milestones.title AS milestone_title, users.name AS assignee_name
+    SELECT tasks.*, tasks.xmin::text AS row_version, projects.name AS project_name,
+      milestones.title AS milestone_title, users.name AS assignee_name
     FROM tasks
     JOIN projects ON projects.id = tasks.project_id
     LEFT JOIN milestones ON milestones.id = tasks.milestone_id

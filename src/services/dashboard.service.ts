@@ -5,8 +5,11 @@ import {
   fetchHighSeverityRisks,
   fetchOverdueIssues,
   fetchOverdueMilestones,
+  fetchOverdueTasks,
   fetchOverviewProjects,
+  fetchStalledTasks,
 } from '../db/repositories/dashboard.repository';
+import { env } from '../config/env';
 import type { AuthenticatedUser } from '../types/auth';
 import { requireAdmin } from './project-access.service';
 
@@ -67,10 +70,30 @@ export async function getDashboardOverview(user: AuthenticatedUser) {
 export async function getDashboardAttention(user: AuthenticatedUser) {
   requireAdmin(user);
   const isAdmin = user.role === 'admin';
-  return {
-    overdue_milestones: await fetchOverdueMilestones(user.id, isAdmin),
-    blocked_tasks: await fetchBlockedTasks(user.id, isAdmin),
-    high_severity_risks: await fetchHighSeverityRisks(user.id, isAdmin),
-    overdue_issues: await fetchOverdueIssues(user.id, isAdmin),
-  };
+  const [overdueMilestones, overdueTasks, stalledTasks, blockedTasks, highSeverityRisks, overdueIssues] = await Promise.all([
+    fetchOverdueMilestones(user.id, isAdmin),
+    fetchOverdueTasks(user.id, isAdmin),
+    fetchStalledTasks(user.id, isAdmin, env.taskStalledDays),
+    fetchBlockedTasks(user.id, isAdmin),
+    fetchHighSeverityRisks(user.id, isAdmin),
+    fetchOverdueIssues(user.id, isAdmin),
+  ]);
+  return deduplicateAttentionItems([
+    ...blockedTasks.map((item) => ({ ...item, item_type: 'task', reason: 'Task is blocked', severity: 'high' })),
+    ...overdueTasks.map((item) => ({ ...item, item_type: 'task', reason: `Overdue since ${item.due_date}`, severity: 'high' })),
+    ...stalledTasks.map((item) => ({ ...item, item_type: 'task', reason: `No update in ${env.taskStalledDays} days`, severity: 'medium' })),
+    ...overdueMilestones.map((item) => ({ ...item, item_type: 'milestone', reason: `Milestone overdue since ${item.target_date}`, severity: 'high' })),
+    ...highSeverityRisks.map((item) => ({ ...item, item_type: 'risk', reason: 'High-severity active risk', severity: item.severity || 'high' })),
+    ...overdueIssues.map((item) => ({ ...item, item_type: 'issue', reason: `Resolution overdue since ${item.target_resolution_date}`, severity: 'high' })),
+  ]);
+}
+
+function deduplicateAttentionItems(items: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.item_type}-${item.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

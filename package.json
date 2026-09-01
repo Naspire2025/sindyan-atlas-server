@@ -10,6 +10,7 @@
     "dev": "npm run build && node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test dist/db/migrate.test.js dist/db/integration.test.js",
+    "test:unit": "npm run build && node --test dist/services/project.service.test.js",
     "seed": "node scripts/seedProjects.js",
     "seed:check": "node scripts/seedProjects.js --dry-run"
   },

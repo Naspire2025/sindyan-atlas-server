@@ -63,7 +63,7 @@ async function requireVaultAccess(user: AuthenticatedUser, entryId: number) {
   const entry = await findVaultEntry(entryId);
   if (!entry || entry.archived_at) throw new AppError(404, 'Vault entry unavailable.');
   if (entry.project_id) {
-    requireProjectAccess(user, Number(entry.project_id));
+    await requireProjectAccess(user, Number(entry.project_id));
   }
   return entry;
 }
@@ -87,13 +87,14 @@ export async function listEntries(user: AuthenticatedUser, query: { project_id?:
   const filters: { projectId?: number; includeArchived?: boolean } = { includeArchived: false };
   if (query.project_id) {
     const projectId = Number(query.project_id);
-    requireProjectAccess(user, projectId);
+    await requireProjectAccess(user, projectId);
     filters.projectId = projectId;
   }
-  const entries = (await listVaultEntries(filters)).filter((entry) => {
-    if (!entry.project_id || user.role === 'admin') return true;
-    return isProjectMember(user.id, Number(entry.project_id));
-  });
+  const entriesWithAccess = await Promise.all((await listVaultEntries(filters)).map(async (entry) => ({
+    entry,
+    canAccess: !entry.project_id || user.role === 'admin' || await isProjectMember(user.id, Number(entry.project_id)),
+  })));
+  const entries = entriesWithAccess.filter(({ canAccess }) => canAccess).map(({ entry }) => entry);
   return Promise.all(entries.map(async (entry) => ({
     ...entry,
     tags: await listVaultEntryTags(entry.id),
@@ -116,7 +117,7 @@ export async function createEntry(user: AuthenticatedUser, body: unknown) {
   const title = requiredText(input.title, 'title');
   const category = optionalText(input.category);
   const projectId = optionalIdentifier(input.project_id);
-  if (projectId) requireProjectAccess(user, projectId);
+  if (projectId) await requireProjectAccess(user, projectId);
   const markdownContent = optionalText(input.markdown_content);
   const externalUrl = optionalText(input.external_url);
   const secretValue = optionalText(input.secret_value);

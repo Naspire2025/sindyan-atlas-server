@@ -1,8 +1,8 @@
 import { pool } from '../db/connection';
-import { isProjectMember } from '../db/repositories/membership.repository';
 import { findTask, type TaskRow } from '../db/repositories/task.repository';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
+import { isIsoDate } from '../utils/date.util';
 import { requireAdmin, requireProjectAccess, requireProjectLead } from './project-access.service';
 
 const TASK_STATUSES = new Set(['todo', 'in_progress', 'blocked', 'reviewing', 'reviewed', 'done']);
@@ -33,6 +33,12 @@ function optionalText(value: unknown): string | null {
   return value.trim() || null;
 }
 
+function optionalDate(value: unknown): string | null {
+  const date = optionalText(value);
+  if (date && !isIsoDate(date)) throw new AppError(400, 'due_date must be a valid ISO date.');
+  return date;
+}
+
 function optionalNumber(value: unknown): number | null {
   if (value === undefined || value === null || value === '') return null;
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new AppError(400, 'Invalid numeric value.');
@@ -59,16 +65,15 @@ async function validateMilestone(projectId: number, milestoneId: number | null):
 
 async function validateAssignee(projectId: number, assigneeUserId: number | null): Promise<void> {
   if (!assigneeUserId) return;
-  if (!(await isProjectMember(assigneeUserId, projectId))) {
-    throw new AppError(400, 'The assignee must be a member of the task project.');
-  }
-}
-
-async function writeActivity(taskId: number, actorUserId: number, eventType: string, previousValue: unknown, newValue: unknown): Promise<void> {
-  await pool.query(`
-    INSERT INTO task_activity (task_id, actor_user_id, event_type, previous_value, new_value)
-    VALUES ($1, $2, $3, $4, $5)
-  `, [taskId, actorUserId, eventType, JSON.stringify(previousValue), JSON.stringify(newValue)]);
+  const result = await pool.query(`
+    SELECT 1
+    FROM project_memberships
+    JOIN users ON users.id = project_memberships.user_id
+    WHERE project_memberships.project_id = $1
+      AND project_memberships.user_id = $2
+      AND users.status = 'active'
+  `, [projectId, assigneeUserId]);
+  if (!result.rows[0]) throw new AppError(400, 'The assignee must be an active member of the task project.');
 }
 
 function canTransitionAsAssignee(currentStatus: string, nextStatus: string): boolean {
@@ -78,6 +83,28 @@ function canTransitionAsAssignee(currentStatus: string, nextStatus: string): boo
     blocked: ['in_progress', 'reviewing'],
   };
   return permittedTransitions[currentStatus]?.includes(nextStatus) ?? false;
+}
+
+function validateStatusTransition(user: AuthenticatedUser, currentStatus: string, nextStatus: string): void {
+  if (currentStatus === nextStatus) return;
+  const adminTransitions: Record<string, string[]> = {
+    todo: ['in_progress', 'blocked'],
+    in_progress: ['todo', 'blocked', 'reviewing'],
+    blocked: ['todo', 'in_progress', 'reviewing'],
+    reviewing: ['in_progress', 'reviewed'],
+    reviewed: ['reviewing', 'done'],
+    done: ['reviewed'],
+  };
+  const contributorTransitions: Record<string, string[]> = {
+    todo: ['in_progress'],
+    in_progress: ['blocked', 'reviewing'],
+    blocked: ['in_progress', 'reviewing'],
+    reviewing: ['in_progress'],
+  };
+  const permitted = user.role === 'admin' ? adminTransitions : contributorTransitions;
+  if (!permitted[currentStatus]?.includes(nextStatus)) {
+    throw new AppError(409, `Task status cannot move from ${currentStatus} to ${nextStatus}.`);
+  }
 }
 
 async function requireMutableTask(user: AuthenticatedUser, task: TaskRow, updates: TaskUpdateInput): Promise<void> {
@@ -103,7 +130,7 @@ function parseCreateTaskInput(body: unknown): CreateTaskInput {
     title: requireText(input.title, 'title'),
     description: optionalText(input.description),
     priority: validatePriority(input.priority),
-    dueDate: optionalText(input.due_date),
+    dueDate: optionalDate(input.due_date),
     estimatedHours: optionalNumber(input.estimated_hours),
     blockerNote: optionalText(input.blocker_note),
   };
@@ -117,7 +144,7 @@ function parseTaskUpdateInput(body: unknown): TaskUpdateInput {
   if ('milestone_id' in input) updates.milestoneId = optionalIdentifier(input.milestone_id);
   if ('assignee_user_id' in input) updates.assigneeUserId = optionalIdentifier(input.assignee_user_id);
   if ('priority' in input) updates.priority = validatePriority(input.priority);
-  if ('due_date' in input) updates.dueDate = optionalText(input.due_date);
+  if ('due_date' in input) updates.dueDate = optionalDate(input.due_date);
   if ('estimated_hours' in input) updates.estimatedHours = optionalNumber(input.estimated_hours);
   if ('blocker_note' in input) updates.blockerNote = optionalText(input.blocker_note);
   if ('status' in input) {
@@ -170,30 +197,33 @@ export async function updateTask(user: AuthenticatedUser, taskId: number, body: 
   if (user.role !== 'admin' && updates.status && (updates.status === 'reviewed' || updates.status === 'done')) {
     throw new AppError(403, 'Only an administrator can review or complete a task.');
   }
+  if (updates.status) validateStatusTransition(user, task.status, updates.status);
   if (updates.milestoneId !== undefined) await validateMilestone(task.project_id, updates.milestoneId);
   if (updates.assigneeUserId !== undefined) await validateAssignee(task.project_id, updates.assigneeUserId);
 
   const nextTask = {
-    milestoneId: updates.milestoneId ?? task.milestone_id ?? null,
-    assigneeUserId: updates.assigneeUserId ?? task.assignee_user_id ?? null,
+    milestoneId: updates.milestoneId !== undefined ? updates.milestoneId : task.milestone_id ?? null,
+    assigneeUserId: updates.assigneeUserId !== undefined ? updates.assigneeUserId : task.assignee_user_id ?? null,
     title: updates.title ?? String(task.title),
-    description: updates.description ?? task.description ?? null,
+    description: updates.description !== undefined ? updates.description : task.description ?? null,
     status: updates.status ?? task.status,
     priority: updates.priority ?? String(task.priority),
-    dueDate: updates.dueDate ?? task.due_date ?? null,
-    estimatedHours: updates.estimatedHours ?? task.estimated_hours ?? null,
-    blockerNote: updates.blockerNote ?? task.blocker_note ?? null,
+    dueDate: updates.dueDate !== undefined ? updates.dueDate : task.due_date ?? null,
+    estimatedHours: updates.estimatedHours !== undefined ? updates.estimatedHours : task.estimated_hours ?? null,
+    blockerNote: updates.blockerNote !== undefined ? updates.blockerNote : task.blocker_note ?? null,
   };
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query(`
+    const updateResult = await client.query(`
       UPDATE tasks SET milestone_id = $1, assignee_user_id = $2, title = $3,
         description = $4, status = $5, priority = $6, due_date = $7,
         estimated_hours = $8, blocker_note = $9, updated_at = NOW()
-      WHERE id = $10
-    `, [nextTask.milestoneId, nextTask.assigneeUserId, nextTask.title, nextTask.description, nextTask.status, nextTask.priority, nextTask.dueDate, nextTask.estimatedHours, nextTask.blockerNote, taskId]);
+      WHERE id = $10 AND xmin::text = $11
+      RETURNING id
+    `, [nextTask.milestoneId, nextTask.assigneeUserId, nextTask.title, nextTask.description, nextTask.status, nextTask.priority, nextTask.dueDate, nextTask.estimatedHours, nextTask.blockerNote, taskId, task.row_version]);
+    if (!updateResult.rows[0]) throw new AppError(409, 'Task changed while you were editing it. Refresh and try again.');
     await client.query(`
       INSERT INTO task_activity (task_id, actor_user_id, event_type, previous_value, new_value)
       VALUES ($1, $2, $3, $4, $5)

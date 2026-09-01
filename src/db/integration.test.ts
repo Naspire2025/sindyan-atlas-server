@@ -13,18 +13,109 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
   const adminId = await createUser({ name: 'Test Admin', emailNormalized: 'admin@test.com', emailDisplay: 'admin@test.com', passwordHash: null, role: 'admin', status: 'active' });
   const leadId = await createUser({ name: 'Project Lead', emailNormalized: 'lead@test.com', emailDisplay: 'lead@test.com', passwordHash: null, role: 'team_member', status: 'active' });
   const memberId = await createUser({ name: 'Team Member', emailNormalized: 'member@test.com', emailDisplay: 'member@test.com', passwordHash: null, role: 'team_member', status: 'active' });
+  const suspendedId = await createUser({ name: 'Suspended Member', emailNormalized: 'suspended@test.com', emailDisplay: 'suspended@test.com', passwordHash: null, role: 'team_member', status: 'suspended' });
 
   const admin = { id: adminId, name: 'Test Admin', email: 'admin@test.com', role: 'admin' as const, status: 'active' as const };
   const lead = { id: leadId, name: 'Project Lead', email: 'lead@test.com', role: 'team_member' as const, status: 'active' as const };
   const member = { id: memberId, name: 'Team Member', email: 'member@test.com', role: 'team_member' as const, status: 'active' as const };
 
-  const project1 = await createProject(admin, { name: 'Alpha Project' }) as { id: number };
+  const project1 = await createProject(admin, {
+    name: 'Alpha Project',
+    owner_user_id: leadId,
+    start_date: '2026-01-01',
+    deadline: '2026-03-31',
+    links: [
+      { label: 'Repository', link_type: 'github', url: 'https://github.com/example/alpha' },
+      { label: 'Design', link_type: 'figma', url: 'https://figma.com/file/example' },
+    ],
+  }) as { id: number };
+  const persistedProject = await pool.query('SELECT owner_user_id, start_date, deadline FROM projects WHERE id = $1', [project1.id]);
+  assert.deepEqual(persistedProject.rows[0], { owner_user_id: leadId, start_date: '2026-01-01', deadline: '2026-03-31' });
   const project2 = await createProject(admin, { name: 'Beta Project' }) as { id: number };
   const project3 = await createProject(admin, { name: 'Restricted Project' }) as { id: number };
+  const projectLinks = await pool.query('SELECT label, link_type, url FROM project_links WHERE project_id = $1 ORDER BY position', [project1.id]);
+  assert.deepEqual(projectLinks.rows, [
+    { label: 'Repository', link_type: 'github', url: 'https://github.com/example/alpha' },
+    { label: 'Design', link_type: 'figma', url: 'https://figma.com/file/example' },
+  ]);
+  await assert.rejects(
+    createProject(member, { name: 'Unauthorized Project' }),
+    { message: 'Administrator access is required.' },
+  );
+  await assert.rejects(
+    createProject(admin, { name: 'Invalid Dates', start_date: '2026-02-01', deadline: '2026-01-01' }),
+    { message: 'deadline must not be before start_date.' },
+  );
   await addProjectMember(project1.id, adminId, 'member');
   await addProjectMember(project1.id, leadId, 'project_lead');
   await addProjectMember(project1.id, memberId, 'member');
+  await addProjectMember(project1.id, suspendedId, 'member');
   await addProjectMember(project2.id, memberId, 'member');
+
+  // ── Timeline and milestones ────────────────────────────────────────────────
+
+  const { createProjectPhase, createProjectMilestone, deleteProjectPhase, listProjectMilestones, updateMilestone } =
+    require('../services/project-planning.service') as typeof import('../services/project-planning.service');
+  const { createTask, updateTask } = require('../services/task.service') as typeof import('../services/task.service');
+
+  const deliveryPhase = await createProjectPhase(lead, project1.id, {
+    name: 'Delivery', start_date: '2026-01-01', end_date: '2026-03-31', position: 0,
+  });
+  const externalPhase = await createProjectPhase(admin, project2.id, {
+    name: 'External phase', start_date: '2026-01-01', end_date: '2026-02-01', position: 0,
+  });
+  const releaseMilestone = await createProjectMilestone(lead, project1.id, {
+    title: 'First release', phase_id: deliveryPhase.id, target_date: '2026-03-15', status: 'in_progress',
+  });
+  const firstTask = await createTask(lead, {
+    project_id: project1.id, milestone_id: releaseMilestone.id, assignee_user_id: memberId, title: 'Complete implementation', due_date: '2026-03-01',
+  });
+  const secondTask = await createTask(lead, {
+    project_id: project1.id, assignee_user_id: memberId, title: 'Verify release', due_date: '2026-03-10',
+  });
+  await updateTask(member, firstTask.id, { status: 'in_progress' });
+  await updateTask(member, firstTask.id, { status: 'reviewing' });
+  await updateTask(admin, firstTask.id, { status: 'reviewed' });
+  await updateTask(admin, firstTask.id, { status: 'done' });
+  await updateTask(admin, secondTask.id, { milestone_id: releaseMilestone.id });
+  await assert.rejects(updateTask(admin, secondTask.id, { status: 'done' }), { message: 'Task status cannot move from todo to done.' });
+  const milestoneProgress = await pool.query(`
+    SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'done') AS done
+    FROM tasks WHERE milestone_id = $1
+  `, [releaseMilestone.id]);
+  assert.deepEqual(milestoneProgress.rows[0], { total: '2', done: '1' });
+  const { getProjectTaskSummary, listProjectTasks } = require('./repositories/project.repository') as typeof import('./repositories/project.repository');
+  assert.equal((await listProjectTasks(project1.id))[0].assignee_name, 'Team Member');
+  assert.deepEqual(await getProjectTaskSummary(project1.id), { total_tasks: 2, done_tasks: 1, blocked_tasks: 0 });
+  const { listTasksForUser } = require('./repositories/task.repository') as typeof import('./repositories/task.repository');
+  const memberTasks = await listTasksForUser(memberId, false);
+  assert.equal(memberTasks.length, 2);
+  assert.equal(memberTasks[0].milestone_title, 'First release');
+  await assert.rejects(
+    createTask(lead, { project_id: project1.id, assignee_user_id: memberId, title: 'Invalid date', due_date: '2026-02-31' }),
+    { message: 'due_date must be a valid ISO date.' },
+  );
+  await assert.rejects(
+    createTask(lead, { project_id: project1.id, assignee_user_id: suspendedId, title: 'Inactive owner', due_date: '2026-03-20' }),
+    { message: 'The assignee must be an active member of the task project.' },
+  );
+  const listedMilestones = await listProjectMilestones(member, project1.id);
+  assert.equal(listedMilestones[0].phase_name, 'Delivery');
+  await updateTask(admin, secondTask.id, { milestone_id: null });
+  assert.equal((await pool.query('SELECT milestone_id FROM tasks WHERE id = $1', [secondTask.id])).rows[0].milestone_id, null);
+  assert.equal((await updateMilestone(lead, releaseMilestone.id as number, { status: 'done' })).status, 'done');
+  await assert.rejects(
+    createProjectMilestone(lead, project1.id, { title: 'Wrong phase', phase_id: externalPhase.id, target_date: '2026-03-20' }),
+    { message: 'The phase must belong to this project.' },
+  );
+  await assert.rejects(
+    deleteProjectPhase(lead, project1.id, deliveryPhase.id as number),
+    { message: 'Move or delete this phase’s milestones before deleting the phase.' },
+  );
+  await assert.rejects(
+    listProjectMilestones(member, project3.id),
+    { message: 'Project unavailable.' },
+  );
 
   // ── Finance ─────────────────────────────────────────────────────────────────
 
@@ -63,11 +154,18 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
 
   // ── Dashboard ───────────────────────────────────────────────────────────────
 
-  const { getDashboardOverview } = require('../services/dashboard.service') as typeof import('../services/dashboard.service');
+  const stalledTask = await createTask(admin, {
+    project_id: project2.id, assignee_user_id: memberId, title: 'Awaiting project update', due_date: '2027-01-15',
+  });
+  await pool.query("UPDATE tasks SET updated_at = NOW() - INTERVAL '8 days' WHERE id = $1", [stalledTask.id]);
+  const { getDashboardAttention, getDashboardOverview } = require('../services/dashboard.service') as typeof import('../services/dashboard.service');
   const overview = await getDashboardOverview(admin);
-  assert.equal(overview.kpis.total_projects, 2);
+  assert.equal(overview.kpis.total_projects, 3);
   assert.equal(overview.kpis.active_projects, 0);
   assert.ok(typeof overview.health_score === 'number');
+  const attentionItems = await getDashboardAttention(admin);
+  assert.ok(attentionItems.some((item) => item.id === secondTask.id && item.item_type === 'task' && String(item.reason).startsWith('Overdue since')));
+  assert.ok(attentionItems.some((item) => item.id === stalledTask.id && item.item_type === 'task' && item.reason === 'No update in 7 days'));
 
   // ── Resource Allocation ─────────────────────────────────────────────────────
 

@@ -32,6 +32,7 @@ export const env = {
   sessionCookieName: process.env.SESSION_COOKIE_NAME ?? 'atlas_session',
   sessionIdleHours: readPositiveInteger('SESSION_IDLE_HOURS', 12),
   sessionAbsoluteDays: readPositiveInteger('SESSION_ABSOLUTE_DAYS', 14),
+  taskStalledDays: readPositiveInteger('TASK_STALLED_DAYS', 7),
   bootstrapAdminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL?.trim(),
   bootstrapAdminName: process.env.BOOTSTRAP_ADMIN_NAME?.trim(),
   bootstrapAdminPassword: process.env.BOOTSTRAP_ADMIN_PASSWORD,

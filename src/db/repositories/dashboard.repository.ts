@@ -55,6 +55,38 @@ export async function fetchBlockedTasks(userId: number, isAdmin: boolean): Promi
   return result.rows as Record<string, unknown>[];
 }
 
+export async function fetchOverdueTasks(userId: number, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+  const membershipClause = isAdmin ? '' : 't.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
+  const parameters = isAdmin ? [] : [userId];
+  const result = await pool.query(`
+    SELECT t.id, t.title, t.status, t.priority, t.due_date, t.project_id, p.name AS project_name,
+      u.name AS assignee_name
+    FROM tasks t
+    JOIN projects p ON p.id = t.project_id
+    LEFT JOIN users u ON u.id = t.assignee_user_id
+    WHERE ${membershipClause} t.due_date::date < CURRENT_DATE AND t.status != 'done'
+    ORDER BY t.due_date ASC, t.id ASC
+  `, parameters);
+  return result.rows as Record<string, unknown>[];
+}
+
+export async function fetchStalledTasks(userId: number, isAdmin: boolean, stalledDays: number): Promise<Record<string, unknown>[]> {
+  const membershipClause = isAdmin ? '' : 't.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
+  const daysParameter = isAdmin ? 1 : 2;
+  const parameters = isAdmin ? [stalledDays] : [userId, stalledDays];
+  const result = await pool.query(`
+    SELECT t.id, t.title, t.status, t.priority, t.due_date, t.updated_at, t.project_id,
+      p.name AS project_name, u.name AS assignee_name
+    FROM tasks t
+    JOIN projects p ON p.id = t.project_id
+    LEFT JOIN users u ON u.id = t.assignee_user_id
+    WHERE ${membershipClause} t.status NOT IN ('done', 'reviewed')
+      AND t.updated_at < NOW() - ($${daysParameter} * INTERVAL '1 day')
+    ORDER BY t.updated_at ASC, t.id ASC
+  `, parameters);
+  return result.rows as Record<string, unknown>[];
+}
+
 export async function fetchHighSeverityRisks(userId: number, isAdmin: boolean): Promise<Record<string, unknown>[]> {
   const membershipClause = isAdmin ? '' : 'r.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const parameters = isAdmin ? [] : [userId];

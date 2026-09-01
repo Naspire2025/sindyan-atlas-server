@@ -41,12 +41,19 @@ test('migrations create the access-control, vault, and single-session foundation
   const project = await createProject(admin, { name: 'Role verification project' });
   await addProjectMember(project.id, leadId, 'project_lead');
   await addProjectMember(project.id, memberId, 'member');
-  const task = await createTask(lead, { project_id: project.id, assignee_user_id: memberId, title: 'Verify access' });
+  const task = await createTask(lead, { project_id: project.id, assignee_user_id: memberId, title: 'Verify access', due_date: '2026-01-20' });
   assert.equal((await updateTask(member, task.id, { status: 'in_progress' })).status, 'in_progress');
   await assert.rejects(updateTask(member, task.id, { priority: 'critical' }), { message: 'Project lead access is required.' });
   assert.equal((await updateTask(lead, task.id, { priority: 'high' })).priority, 'high');
   await assert.rejects(updateTask(lead, task.id, { status: 'done' }), { message: 'Only an administrator can review or complete a task.' });
+  await assert.rejects(updateTask(admin, task.id, { status: 'done' }), { message: 'Task status cannot move from in_progress to done.' });
+  assert.equal((await updateTask(member, task.id, { status: 'reviewing' })).status, 'reviewing');
+  assert.equal((await updateTask(admin, task.id, { status: 'reviewed' })).status, 'reviewed');
   assert.equal((await updateTask(admin, task.id, { status: 'done' })).status, 'done');
+  await assert.rejects(
+    createTask(lead, { project_id: project.id, assignee_user_id: memberId, title: 'Invalid deadline', due_date: '2026-02-31' }),
+    { message: 'due_date must be a valid ISO date.' },
+  );
 
   const phase = await createProjectPhase(lead, project.id, { name: 'Delivery', position: 0, start_date: '2026-01-01', end_date: '2026-01-31' });
   const milestone = await createProjectMilestone(lead, project.id, { title: 'First release', phase_id: phase.id, target_date: '2026-01-31' });

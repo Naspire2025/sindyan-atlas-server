@@ -70,12 +70,12 @@ async function validateOwnerMembership(projectId: number, ownerUserId: number | 
 // --- Risks ---
 
 export async function listProjectRisks(user: AuthenticatedUser, projectId: number) {
-  requireProjectAccess(user, projectId);
+  await requireProjectAccess(user, projectId);
   return listRisksForProject(projectId);
 }
 
 export async function createRiskRecord(user: AuthenticatedUser, projectId: number, body: unknown) {
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   await requireExistingProject(projectId);
   const input = body as Record<string, unknown>;
   const title = requiredText(input.title, 'title');
@@ -102,7 +102,7 @@ export async function createRiskRecord(user: AuthenticatedUser, projectId: numbe
 export async function updateRiskRecord(user: AuthenticatedUser, riskId: number, body: unknown) {
   const existing = await findRisk(riskId);
   if (!existing) throw new AppError(404, 'Risk unavailable.');
-  requireProjectLead(user, Number(existing.project_id));
+  await requireProjectLead(user, Number(existing.project_id));
   const input = body as Record<string, unknown>;
   const title = input.title === undefined ? String(existing.title) : requiredText(input.title, 'title');
   const description = input.description === undefined ? (existing.description as string) ?? null : optionalText(input.description);
@@ -132,12 +132,12 @@ export async function deleteRiskRecord(user: AuthenticatedUser, riskId: number):
 // --- Issues ---
 
 export async function listProjectIssues(user: AuthenticatedUser, projectId: number) {
-  requireProjectAccess(user, projectId);
+  await requireProjectAccess(user, projectId);
   return listIssuesForProject(projectId);
 }
 
 export async function createIssueRecord(user: AuthenticatedUser, projectId: number, body: unknown) {
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   await requireExistingProject(projectId);
   const input = body as Record<string, unknown>;
   const title = requiredText(input.title, 'title');
@@ -162,7 +162,7 @@ export async function createIssueRecord(user: AuthenticatedUser, projectId: numb
 export async function updateIssueRecord(user: AuthenticatedUser, issueId: number, body: unknown) {
   const existing = await findIssue(issueId);
   if (!existing) throw new AppError(404, 'Issue unavailable.');
-  requireProjectLead(user, Number(existing.project_id));
+  await requireProjectLead(user, Number(existing.project_id));
   const input = body as Record<string, unknown>;
   const title = input.title === undefined ? String(existing.title) : requiredText(input.title, 'title');
   const description = input.description === undefined ? (existing.description as string) ?? null : optionalText(input.description);

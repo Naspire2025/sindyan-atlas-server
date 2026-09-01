@@ -331,6 +331,6 @@ export async function getWorkloadView(user: AuthenticatedUser) {
 }
 
 export async function getProjectAllocationView(user: AuthenticatedUser, projectId: number) {
-  requireProjectAccess(user, projectId);
+  await requireProjectAccess(user, projectId);
   return fetchProjectAllocations(projectId);
 }

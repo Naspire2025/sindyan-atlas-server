@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { findProject, listProjectMembers, listProjectMilestones, listProjectsForUser, listProjectTasks } from '../db/repositories/project.repository';
+import { findProject, getProjectTaskSummary, listProjectMembers, listProjectMilestones, listProjectsForUser, listProjectTasks } from '../db/repositories/project.repository';
 import { requireProjectAccess } from '../services/project-access.service';
 import { AppError } from '../utils/app-error.util';
 import { parsePositiveId, requireUser } from '../utils/request.util';
@@ -24,6 +24,7 @@ export async function getProjectController(request: Request, response: Response,
     const user = requireUser(request.user);
     response.json({
       ...project,
+      task_summary: await getProjectTaskSummary(projectId),
       tasks: await listProjectTasks(projectId),
       milestones: await listProjectMilestones(projectId),
       team_members: await listProjectMembers(projectId),

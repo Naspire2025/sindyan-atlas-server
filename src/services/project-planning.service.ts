@@ -1,6 +1,7 @@
 import { pool } from '../db/connection';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
+import { isIsoDate } from '../utils/date.util';
 import { requireAdmin, requireProjectAccess, requireProjectLead } from './project-access.service';
 
 const MILESTONE_STATUSES = new Set(['not_started', 'in_progress', 'done', 'missed']);
@@ -12,7 +13,7 @@ function requiredText(value: unknown, field: string): string {
 
 function optionalDate(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new AppError(400, 'Invalid ISO date.');
+  if (typeof value !== 'string' || !isIsoDate(value)) throw new AppError(400, 'Invalid ISO date.');
   return value;
 }
 
@@ -42,13 +43,13 @@ async function validatePhase(projectId: number, phaseId: number | null): Promise
 }
 
 export async function listProjectLinks(user: AuthenticatedUser, projectId: number): Promise<Record<string, unknown>[]> {
-  requireProjectAccess(user, projectId);
+  await requireProjectAccess(user, projectId);
   const result = await pool.query('SELECT * FROM project_links WHERE project_id = $1 ORDER BY position, id', [projectId]);
   return result.rows;
 }
 
 export async function createProjectLink(user: AuthenticatedUser, projectId: number, body: unknown): Promise<Record<string, unknown>> {
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   const input = body as { label?: unknown; link_type?: unknown; url?: unknown; position?: unknown };
   const label = requiredText(input.label, 'label');
   const linkType = requiredText(input.link_type, 'link_type');
@@ -62,13 +63,13 @@ export async function createProjectLink(user: AuthenticatedUser, projectId: numb
 }
 
 export async function deleteProjectLink(user: AuthenticatedUser, projectId: number, linkId: number): Promise<void> {
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   const result = await pool.query('DELETE FROM project_links WHERE id = $1 AND project_id = $2', [linkId, projectId]);
   if (!result.rowCount) throw new AppError(404, 'Project link unavailable.');
 }
 
 export async function updateProjectLink(user: AuthenticatedUser, projectId: number, linkId: number, body: unknown): Promise<Record<string, unknown>> {
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   const existingResult = await pool.query('SELECT * FROM project_links WHERE id = $1 AND project_id = $2', [linkId, projectId]);
   const existing = existingResult.rows[0] as Record<string, unknown> | undefined;
   if (!existing) throw new AppError(404, 'Project link unavailable.');
@@ -86,16 +87,17 @@ export async function updateProjectLink(user: AuthenticatedUser, projectId: numb
 }
 
 export async function listProjectPhases(user: AuthenticatedUser, projectId: number): Promise<Record<string, unknown>[]> {
-  requireProjectAccess(user, projectId);
+  await requireProjectAccess(user, projectId);
   const result = await pool.query('SELECT * FROM project_phases WHERE project_id = $1 ORDER BY position, id', [projectId]);
   return result.rows;
 }
 
 export async function createProjectPhase(user: AuthenticatedUser, projectId: number, body: unknown): Promise<Record<string, unknown>> {
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   const input = body as { name?: unknown; position?: unknown; start_date?: unknown; end_date?: unknown };
   const startDate = optionalDate(input.start_date);
   const endDate = optionalDate(input.end_date);
+  if (!startDate || !endDate) throw new AppError(400, 'start_date and end_date are required.');
   if (startDate && endDate && endDate < startDate) throw new AppError(400, 'end_date must not be before start_date.');
   const position = input.position === undefined ? 0 : nonNegativeInteger(input.position, 'position');
   const result = await pool.query('INSERT INTO project_phases (project_id, name, position, start_date, end_date) VALUES ($1, $2, $3, $4, $5) RETURNING id', [projectId, requiredText(input.name, 'name'), position, startDate, endDate]);
@@ -105,7 +107,7 @@ export async function createProjectPhase(user: AuthenticatedUser, projectId: num
 }
 
 export async function updateProjectPhase(user: AuthenticatedUser, projectId: number, phaseId: number, body: unknown): Promise<Record<string, unknown>> {
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   const existingResult = await pool.query('SELECT * FROM project_phases WHERE id = $1 AND project_id = $2', [phaseId, projectId]);
   const existing = existingResult.rows[0] as Record<string, unknown> | undefined;
   if (!existing) throw new AppError(404, 'Project phase unavailable.');
@@ -123,19 +125,28 @@ export async function updateProjectPhase(user: AuthenticatedUser, projectId: num
 }
 
 export async function listProjectMilestones(user: AuthenticatedUser, projectId: number): Promise<Record<string, unknown>[]> {
-  requireProjectAccess(user, projectId);
-  const result = await pool.query('SELECT * FROM milestones WHERE project_id = $1 ORDER BY target_date, id', [projectId]);
+  await requireProjectAccess(user, projectId);
+  const result = await pool.query(`
+    SELECT milestones.*, project_phases.name AS phase_name
+    FROM milestones
+    LEFT JOIN project_phases ON project_phases.id = milestones.phase_id
+    WHERE milestones.project_id = $1
+    ORDER BY milestones.target_date, milestones.id
+  `, [projectId]);
   return result.rows;
 }
 
 export async function createProjectMilestone(user: AuthenticatedUser, projectId: number, body: unknown): Promise<Record<string, unknown>> {
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   const input = body as { title?: unknown; target_date?: unknown; phase_id?: unknown; status?: unknown };
   const phaseId = optionalId(input.phase_id);
+  if (!phaseId) throw new AppError(400, 'phase_id is required.');
   await validatePhase(projectId, phaseId);
+  const targetDate = optionalDate(input.target_date);
+  if (!targetDate) throw new AppError(400, 'target_date is required.');
   const status = input.status ?? 'not_started';
   if (typeof status !== 'string' || !MILESTONE_STATUSES.has(status)) throw new AppError(400, 'Invalid milestone status.');
-  const result = await pool.query('INSERT INTO milestones (project_id, phase_id, title, target_date, status) VALUES ($1, $2, $3, $4, $5) RETURNING id', [projectId, phaseId, requiredText(input.title, 'title'), optionalDate(input.target_date), status]);
+  const result = await pool.query('INSERT INTO milestones (project_id, phase_id, title, target_date, status) VALUES ($1, $2, $3, $4, $5) RETURNING id', [projectId, phaseId, requiredText(input.title, 'title'), targetDate, status]);
   const milestoneId = result.rows[0].id;
   const milestoneResult = await pool.query('SELECT * FROM milestones WHERE id = $1', [milestoneId]);
   return milestoneResult.rows[0];
@@ -146,7 +157,7 @@ export async function updateMilestone(user: AuthenticatedUser, milestoneId: numb
   const existing = existingResult.rows[0] as Record<string, unknown> | undefined;
   if (!existing) throw new AppError(404, 'Milestone unavailable.');
   const projectId = Number(existing.project_id);
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   const input = body as { title?: unknown; target_date?: unknown; phase_id?: unknown; status?: unknown };
   const phaseId = input.phase_id === undefined ? Number(existing.phase_id) || null : optionalId(input.phase_id);
   await validatePhase(projectId, phaseId);
@@ -171,8 +182,10 @@ export async function deleteMilestone(user: AuthenticatedUser, milestoneId: numb
 }
 
 export async function deleteProjectPhase(user: AuthenticatedUser, projectId: number, phaseId: number): Promise<void> {
-  requireProjectLead(user, projectId);
+  await requireProjectLead(user, projectId);
   await requireProjectRecord(projectId);
+  const milestoneResult = await pool.query('SELECT COUNT(*) AS count FROM milestones WHERE project_id = $1 AND phase_id = $2', [projectId, phaseId]);
+  if (Number(milestoneResult.rows[0].count) > 0) throw new AppError(409, 'Move or delete this phase’s milestones before deleting the phase.');
   const result = await pool.query('DELETE FROM project_phases WHERE id = $1 AND project_id = $2', [phaseId, projectId]);
   if (!result.rowCount) throw new AppError(404, 'Project phase unavailable.');
 }
