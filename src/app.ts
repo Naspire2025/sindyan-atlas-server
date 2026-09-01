@@ -1,5 +1,4 @@
 import cors from 'cors';
-import cookieParser from 'cookie-parser';
 import express from 'express';
 import { env } from './config/env';
 import { errorHandler } from './middleware/error-handler.middleware';
@@ -33,12 +32,10 @@ export function createApp() {
     origin(origin, callback) {
       callback(null, isAllowedOrigin(origin) ? origin : false);
     },
-    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   }));
   app.use(express.json({ limit: '1mb' }));
-  app.use(cookieParser());
   app.use(requestLogger);
 
   app.get('/api/health', (_request, response) => response.json({ status: 'ok' }));

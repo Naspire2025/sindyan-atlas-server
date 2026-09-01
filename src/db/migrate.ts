@@ -1,6 +1,6 @@
 import { pool } from './connection';
 
-const CURRENT_SCHEMA_VERSION = 1;
+const CURRENT_SCHEMA_VERSION = 2;
 
 async function columnExists(tableName: string, columnName: string): Promise<boolean> {
   const { rows } = await pool.query(
@@ -117,7 +117,6 @@ async function createSchema(): Promise<void> {
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       token_hash TEXT NOT NULL UNIQUE,
-      csrf_token_hash TEXT NOT NULL,
       expires_at TIMESTAMPTZ NOT NULL,
       absolute_expires_at TIMESTAMPTZ NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -374,25 +373,26 @@ async function createIndexes(): Promise<void> {
   `);
 }
 
-async function applyCurrentSchema(): Promise<void> {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      version INTEGER PRIMARY KEY,
-      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-  const { rows } = await pool.query(
-    'SELECT version FROM schema_migrations WHERE version = $1',
-    [CURRENT_SCHEMA_VERSION],
-  );
-  if (rows.length > 0) return;
+const SEQUENTIAL_MIGRATIONS: Record<number, () => Promise<void>> = {
+  2: async () => {
+    await pool.query('ALTER TABLE sessions DROP COLUMN IF EXISTS csrf_token_hash');
+  },
+};
 
+async function applyVersion(version: number): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await createSchema();
-    await createIndexes();
-    await client.query('INSERT INTO schema_migrations (version) VALUES ($1)', [CURRENT_SCHEMA_VERSION]);
+    const { rows } = await pool.query('SELECT 1 FROM schema_migrations WHERE version = $1', [version]);
+    if (rows.length === 0) {
+      if (version === 1) {
+        await createSchema();
+        await createIndexes();
+      }
+      const apply = SEQUENTIAL_MIGRATIONS[version];
+      if (apply) await apply();
+      await client.query('INSERT INTO schema_migrations (version) VALUES ($1)', [version]);
+    }
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -403,5 +403,14 @@ async function applyCurrentSchema(): Promise<void> {
 }
 
 export async function runMigrations(): Promise<void> {
-  await applyCurrentSchema();
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  for (let version = 1; version <= CURRENT_SCHEMA_VERSION; version += 1) {
+    await applyVersion(version);
+  }
 }

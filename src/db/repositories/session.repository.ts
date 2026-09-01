@@ -14,15 +14,14 @@ export async function revokeActiveSessionsForUser(userId: number): Promise<void>
 export async function createSession(input: {
   userId: number;
   tokenHash: string;
-  csrfTokenHash: string;
   expiresAt: string;
   absoluteExpiresAt: string;
 }): Promise<number> {
   const result = await pool.query(`
-    INSERT INTO sessions (user_id, token_hash, csrf_token_hash, expires_at, absolute_expires_at)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO sessions (user_id, token_hash, expires_at, absolute_expires_at)
+    VALUES ($1, $2, $3, $4)
     RETURNING id
-  `, [input.userId, input.tokenHash, input.csrfTokenHash, input.expiresAt, input.absoluteExpiresAt]);
+  `, [input.userId, input.tokenHash, input.expiresAt, input.absoluteExpiresAt]);
   return Number(result.rows[0].id);
 }
 
@@ -30,7 +29,6 @@ export async function findSessionIdentity(tokenHash: string): Promise<SessionRow
   const result = await pool.query(`
     SELECT
       sessions.id AS "sessionId",
-      sessions.csrf_token_hash AS "csrfTokenHash",
       sessions.expires_at AS "expiresAt",
       sessions.absolute_expires_at AS "absoluteExpiresAt",
       users.id, users.name, users.email_display AS email, users.role, users.status
@@ -50,10 +48,6 @@ export async function touchSession(sessionId: number, expiresAt: string): Promis
     SET last_seen_at = NOW(), expires_at = $1
     WHERE id = $2 AND revoked_at IS NULL
   `, [expiresAt, sessionId]);
-}
-
-export async function updateCsrfToken(sessionId: number, csrfTokenHash: string): Promise<void> {
-  await pool.query('UPDATE sessions SET csrf_token_hash = $1 WHERE id = $2 AND revoked_at IS NULL', [csrfTokenHash, sessionId]);
 }
 
 export async function revokeSession(sessionId: number): Promise<void> {

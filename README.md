@@ -4,7 +4,7 @@ The backend API for **Sindyan Atlas**, an internal project-management applicatio
 
 ## Features
 
-- **Authentication** — email/password login, Argon2 password hashing, httpOnly session cookies, CSRF tokens, single-session enforcement
+- **Authentication** — email/password login, Argon2 password hashing, opaque bearer-token sessions, single-session enforcement
 - **Authorization** — role-based access control (admin, project lead, team member) enforced server-side on every protected endpoint
 - **Projects** — CRUD with owner, status, priority, deadlines, budget, and planning links
 - **Tasks** — task lifecycle with status transitions, assignee, milestone linkage, comments, and activity log
@@ -54,13 +54,12 @@ DATABASE_URL=postgresql://user:password@localhost:5432/atlas
 # Session
 SESSION_IDLE_HOURS=12
 SESSION_ABSOLUTE_DAYS=14
-SESSION_COOKIE_NAME=atlas_session
 TASK_STALLED_DAYS=7
 
 # CORS
 FRONTEND_ORIGINS=http://localhost:5173,http://localhost:5174
 # Trust proxy is hardcoded to 1 (single reverse proxy hop, as on Render) so
-# rate limiting and cookie handling work behind a proxy automatically.
+# rate limiting works behind a proxy automatically.
 
 # Bootstrap admin (created on first run if no admin exists)
 BOOTSTRAP_ADMIN_EMAIL=admin@example.com
@@ -126,8 +125,7 @@ src/
   services/
       ...                      # Business logic and authorization rules
   middleware/
-      require-auth.middleware.ts       # Session-based authentication
-      require-csrf.middleware.ts       # CSRF token validation
+      require-auth.middleware.ts       # Bearer-token authentication
       require-trusted-origin.middleware.ts  # Origin header check
       security-headers.middleware.ts   # Security response headers
       error-handler.middleware.ts      # Global error handler
@@ -149,9 +147,8 @@ src/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/login` | Log in |
+| POST | `/api/auth/login` | Log in (returns session token) |
 | GET | `/api/auth/me` | Current user |
-| GET | `/api/auth/csrf` | Refresh CSRF token |
 | POST | `/api/auth/logout` | Log out |
 | GET | `/api/projects` | List projects |
 | POST | `/api/projects` | Create project |
@@ -197,10 +194,10 @@ Migrations run automatically on server start via `runMigrations()`.
 
 - Passwords hashed with Argon2 (never stored in plaintext)
 - Vault secrets encrypted with AES-256-GCM; encryption key never logged
-- httpOnly session cookies (SameSite=Lax outside production; SameSite=None + Secure in production for cross-site frontend/API origins)
-- Cross-site deployment requires the frontend origin in `FRONTEND_ORIGINS` and third-party cookies allowed in the browser; same-site hosting is preferred to avoid third-party-cookie blocking
-- CSRF tokens required for all state-changing requests
-- Origin header validation against allowed frontend origins
+- Session tokens are opaque and only stored server-side (hashed); the browser holds the raw token in `sessionStorage` on the client
+- The browser sends the token via an `Authorization: Bearer` header on every request, so it is not affected by third-party-cookie blocking in cross-site deployments
+- Because the token travels in an explicit header (never auto-attached by the browser), cross-site request forgery is not possible; no CSRF double-submit tokens are required
+- Origin header validation against allowed frontend origins still applies
 - Rate limiting on login endpoint (10 attempts per 15 minutes)
 - Security headers (X-Content-Type-Options, X-Frame-Options, etc.)
 - Parameterized SQL queries throughout — no string interpolation

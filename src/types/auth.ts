@@ -12,7 +12,6 @@ export type AuthenticatedUser = {
 
 export type SessionIdentity = AuthenticatedUser & {
   sessionId: number;
-  csrfTokenHash: string;
   expiresAt: string;
   absoluteExpiresAt: string;
 };

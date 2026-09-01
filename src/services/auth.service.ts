@@ -11,7 +11,6 @@ import { deliverInvitation } from './invitation-delivery.service';
 
 export type NewSession = {
   token: string;
-  csrfToken: string;
   expiresAt: Date;
 };
 
@@ -32,7 +31,6 @@ async function createSessionForUser(userId: number): Promise<NewSession> {
   const absoluteExpiresAt = addDays(now, env.sessionAbsoluteDays);
   const expiresAt = addHours(now, env.sessionIdleHours);
   const token = createOpaqueToken();
-  const csrfToken = createOpaqueToken();
 
   const client = await pool.connect();
   try {
@@ -41,7 +39,6 @@ async function createSessionForUser(userId: number): Promise<NewSession> {
     await createSession({
       userId,
       tokenHash: hashToken(token),
-      csrfTokenHash: hashToken(csrfToken),
       expiresAt: expiresAt.toISOString(),
       absoluteExpiresAt: absoluteExpiresAt.toISOString(),
     });
@@ -53,7 +50,7 @@ async function createSessionForUser(userId: number): Promise<NewSession> {
     client.release();
   }
 
-  return { token, csrfToken, expiresAt };
+  return { token, expiresAt };
 }
 
 export async function bootstrapAdmin(): Promise<void> {

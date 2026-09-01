@@ -23,7 +23,6 @@ import {
   workloadController,
 } from '../controllers/resource.controller';
 import { requireAuth } from '../middleware/require-auth.middleware';
-import { requireCsrf } from '../middleware/require-csrf.middleware';
 
 export const userCapacityRouter = Router({ mergeParams: true });
 export const memberAllocationRouter = Router();
@@ -33,27 +32,27 @@ export const resourceRouter = Router();
 export const projectAllocationRouter = Router({ mergeParams: true });
 
 userCapacityRouter.get('/capacity-profiles', requireAuth, listCapacityProfilesController);
-userCapacityRouter.post('/capacity-profiles', requireAuth, requireCsrf, createCapacityProfileController);
-userCapacityRouter.patch('/capacity-profiles/:profileId', requireAuth, requireCsrf, updateCapacityProfileController);
+userCapacityRouter.post('/capacity-profiles', requireAuth, createCapacityProfileController);
+userCapacityRouter.patch('/capacity-profiles/:profileId', requireAuth, updateCapacityProfileController);
 userCapacityRouter.get('/availability', requireAuth, listAvailabilityController);
-userCapacityRouter.post('/availability', requireAuth, requireCsrf, createAvailabilityController);
-userCapacityRouter.patch('/availability/:availabilityId', requireAuth, requireCsrf, updateAvailabilityController);
-userCapacityRouter.delete('/availability/:availabilityId', requireAuth, requireCsrf, deleteAvailabilityController);
+userCapacityRouter.post('/availability', requireAuth, createAvailabilityController);
+userCapacityRouter.patch('/availability/:availabilityId', requireAuth, updateAvailabilityController);
+userCapacityRouter.delete('/availability/:availabilityId', requireAuth, deleteAvailabilityController);
 
 memberAllocationRouter.get('/', requireAuth, listMemberAllocationsController);
-memberAllocationRouter.post('/', requireAuth, requireCsrf, createMemberAllocationController);
-memberAllocationRouter.patch('/:allocationId', requireAuth, requireCsrf, updateMemberAllocationController);
-memberAllocationRouter.delete('/:allocationId', requireAuth, requireCsrf, deleteMemberAllocationController);
+memberAllocationRouter.post('/', requireAuth, createMemberAllocationController);
+memberAllocationRouter.patch('/:allocationId', requireAuth, updateMemberAllocationController);
+memberAllocationRouter.delete('/:allocationId', requireAuth, deleteMemberAllocationController);
 
 assetRouter.get('/', requireAuth, listAssetsController);
-assetRouter.post('/', requireAuth, requireCsrf, createAssetController);
-assetRouter.patch('/:assetId', requireAuth, requireCsrf, updateAssetController);
-assetRouter.delete('/:assetId', requireAuth, requireCsrf, deleteAssetController);
+assetRouter.post('/', requireAuth, createAssetController);
+assetRouter.patch('/:assetId', requireAuth, updateAssetController);
+assetRouter.delete('/:assetId', requireAuth, deleteAssetController);
 
 assetAllocationRouter.get('/', requireAuth, listAssetAllocationsController);
-assetAllocationRouter.post('/', requireAuth, requireCsrf, createAssetAllocationController);
-assetAllocationRouter.patch('/:allocationId', requireAuth, requireCsrf, updateAssetAllocationController);
-assetAllocationRouter.delete('/:allocationId', requireAuth, requireCsrf, deleteAssetAllocationController);
+assetAllocationRouter.post('/', requireAuth, createAssetAllocationController);
+assetAllocationRouter.patch('/:allocationId', requireAuth, updateAssetAllocationController);
+assetAllocationRouter.delete('/:allocationId', requireAuth, deleteAssetAllocationController);
 
 resourceRouter.get('/workload', requireAuth, workloadController);
 

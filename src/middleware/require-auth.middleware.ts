@@ -10,9 +10,16 @@ function calculateIdleExpiry(absoluteExpiresAt: string): string {
   return (idleExpiry < absoluteExpiry ? idleExpiry : absoluteExpiry).toISOString();
 }
 
+function bearerToken(request: Request): string | undefined {
+  const authorization = request.get('authorization');
+  if (typeof authorization !== 'string') return undefined;
+  const match = /^Bearer\s+(.+)$/i.exec(authorization.trim());
+  return match ? match[1] : undefined;
+}
+
 export async function requireAuth(request: Request, _response: Response, next: NextFunction): Promise<void> {
-  const token = request.cookies?.[env.sessionCookieName];
-  if (typeof token !== 'string' || token.length === 0) {
+  const token = bearerToken(request);
+  if (!token) {
     next(new AppError(401, 'Authentication is required.'));
     return;
   }

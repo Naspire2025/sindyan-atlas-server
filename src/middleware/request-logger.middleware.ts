@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 
-const SENSITIVE_PATHS = new Set(['/api/auth/login', '/api/auth/change-password', '/api/auth/invitations', '/api/auth/csrf']);
+const SENSITIVE_PATHS = new Set(['/api/auth/login', '/api/auth/change-password', '/api/auth/invitations']);
 
 function isSensitivePath(path: string): boolean {
   if (SENSITIVE_PATHS.has(path)) return true;
