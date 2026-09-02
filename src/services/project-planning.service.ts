@@ -141,7 +141,6 @@ export async function createProjectMilestone(user: AuthenticatedUser, projectId:
   await requireProjectLead(user, projectId);
   const input = body as { title?: unknown; target_date?: unknown; phase_id?: unknown; status?: unknown };
   const phaseId = optionalId(input.phase_id);
-  if (!phaseId) throw new AppError(400, 'phase_id is required.');
   await validatePhase(projectId, phaseId);
   const targetDate = optionalDate(input.target_date);
   if (!targetDate) throw new AppError(400, 'target_date is required.');
