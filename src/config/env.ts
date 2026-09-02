@@ -60,7 +60,7 @@ validateR2Configuration(fileStorageEnabled);
 
 export const env = {
   host: process.env.HOST ?? "127.0.0.1",
-  port: readPositiveInteger("PORT", 8000),
+  port: readPositiveInteger("PORT", 8080),
   isProduction: process.env.NODE_ENV === "production",
   frontendOrigins: readOrigins(),
   trustProxy: 1,
