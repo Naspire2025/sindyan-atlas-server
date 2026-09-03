@@ -70,6 +70,15 @@ export const env = {
   bootstrapAdminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL?.trim(),
   bootstrapAdminName: process.env.BOOTSTRAP_ADMIN_NAME?.trim(),
   bootstrapAdminPassword: process.env.BOOTSTRAP_ADMIN_PASSWORD,
+  emailProvider: process.env.EMAIL_PROVIDER?.trim(),
+  smtpHost: process.env.SMTP_HOST?.trim(),
+  smtpPort: process.env.SMTP_PORT
+    ? readPositiveInteger("SMTP_PORT", 587)
+    : 587,
+  smtpUser: process.env.SMTP_USER?.trim(),
+  smtpPass: process.env.SMTP_PASS,
+  smtpFrom: process.env.SMTP_FROM?.trim(),
+  smtpFromName: process.env.EMAIL_FROM_NAME?.trim(),
   invitationDeliveryWebhookUrl:
     process.env.INVITATION_DELIVERY_WEBHOOK_URL?.trim(),
   frontendAppUrl: process.env.FRONTEND_APP_URL?.trim(),

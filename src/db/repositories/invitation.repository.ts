@@ -40,7 +40,7 @@ export async function findPendingInvitation(tokenHash: string): Promise<Invitati
     SELECT id, email_normalized, name, role, expires_at
     FROM invitations
     WHERE token_hash = $1 AND accepted_at IS NULL AND revoked_at IS NULL
-      AND datetime(expires_at) > NOW()
+      AND expires_at > NOW()
   `, [tokenHash]);
   return result.rows[0] as InvitationRow | undefined;
 }
