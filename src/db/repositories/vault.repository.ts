@@ -1,16 +1,16 @@
 import { pool } from '../connection';
 
-export type VaultEntryRow = Record<string, unknown> & { id: number; owner_user_id: number };
-export type VaultSecretRow = Record<string, unknown> & { vault_entry_id: number };
-export type VaultTagRow = Record<string, unknown> & { id: number };
-export type VaultFileRow = Record<string, unknown> & { id: number; vault_entry_id: number };
+export type VaultEntryRow = Record<string, unknown> & { id: string; owner_user_id: string };
+export type VaultSecretRow = Record<string, unknown> & { vault_entry_id: string };
+export type VaultTagRow = Record<string, unknown> & { id: string };
+export type VaultFileRow = Record<string, unknown> & { id: string; vault_entry_id: string };
 
-export async function findVaultEntry(entryId: number): Promise<VaultEntryRow | undefined> {
+export async function findVaultEntry(entryId: string): Promise<VaultEntryRow | undefined> {
   const result = await pool.query('SELECT * FROM vault_entries WHERE id = $1', [entryId]);
   return result.rows[0] as VaultEntryRow | undefined;
 }
 
-export async function listVaultEntries(filters: { projectId?: number; includeArchived?: boolean }): Promise<VaultEntryRow[]> {
+export async function listVaultEntries(filters: { projectId?: string; includeArchived?: boolean }): Promise<VaultEntryRow[]> {
   const conditions: string[] = [];
   const parameters: unknown[] = [];
   let paramIndex = 1;
@@ -26,16 +26,16 @@ export async function listVaultEntries(filters: { projectId?: number; includeArc
   return result.rows as VaultEntryRow[];
 }
 
-export async function createVaultEntry(input: Record<string, unknown>): Promise<number> {
+export async function createVaultEntry(input: Record<string, unknown>): Promise<string> {
   const result = await pool.query(
     `INSERT INTO vault_entries (project_id, owner_user_id, entry_type, title, category, markdown_content, external_url)
      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
     [input.projectId, input.ownerUserId, input.entryType, input.title, input.category, input.markdownContent, input.externalUrl],
   );
-  return result.rows[0].id as number;
+  return result.rows[0].id as string;
 }
 
-export async function updateVaultEntry(entryId: number, input: Record<string, unknown>): Promise<void> {
+export async function updateVaultEntry(entryId: string, input: Record<string, unknown>): Promise<void> {
   await pool.query(
     `UPDATE vault_entries
      SET title = $1, category = $2, markdown_content = $3,
@@ -45,23 +45,23 @@ export async function updateVaultEntry(entryId: number, input: Record<string, un
   );
 }
 
-export async function archiveVaultEntry(entryId: number): Promise<void> {
+export async function archiveVaultEntry(entryId: string): Promise<void> {
   await pool.query(
     "UPDATE vault_entries SET archived_at = NOW(), updated_at = NOW() WHERE id = $1",
     [entryId],
   );
 }
 
-export async function deleteVaultEntry(entryId: number): Promise<void> {
+export async function deleteVaultEntry(entryId: string): Promise<void> {
   await pool.query('DELETE FROM vault_entries WHERE id = $1', [entryId]);
 }
 
-export async function findVaultSecret(entryId: number): Promise<VaultSecretRow | undefined> {
+export async function findVaultSecret(entryId: string): Promise<VaultSecretRow | undefined> {
   const result = await pool.query('SELECT * FROM vault_secrets WHERE vault_entry_id = $1', [entryId]);
   return result.rows[0] as VaultSecretRow | undefined;
 }
 
-export async function upsertVaultSecret(entryId: number, input: Record<string, unknown>): Promise<void> {
+export async function upsertVaultSecret(entryId: string, input: Record<string, unknown>): Promise<void> {
   await pool.query(
     `INSERT INTO vault_secrets (vault_entry_id, encrypted_value, key_version, nonce, auth_tag)
      VALUES ($1, $2, $3, $4, $5)
@@ -72,7 +72,7 @@ export async function upsertVaultSecret(entryId: number, input: Record<string, u
   );
 }
 
-export async function deleteVaultSecret(entryId: number): Promise<void> {
+export async function deleteVaultSecret(entryId: string): Promise<void> {
   await pool.query('DELETE FROM vault_secrets WHERE vault_entry_id = $1', [entryId]);
 }
 
@@ -81,15 +81,15 @@ export async function findVaultTagByName(normalizedName: string): Promise<VaultT
   return result.rows[0] as VaultTagRow | undefined;
 }
 
-export async function createVaultTag(displayName: string, normalizedName: string): Promise<number> {
+export async function createVaultTag(displayName: string, normalizedName: string): Promise<string> {
   const result = await pool.query(
     'INSERT INTO vault_tags (display_name, name_normalized) VALUES ($1, $2) RETURNING id',
     [displayName, normalizedName],
   );
-  return result.rows[0].id as number;
+  return result.rows[0].id as string;
 }
 
-export async function listVaultEntryTags(entryId: number): Promise<VaultTagRow[]> {
+export async function listVaultEntryTags(entryId: string): Promise<VaultTagRow[]> {
   const result = await pool.query(
     `SELECT vt.id, vt.name_normalized, vt.display_name
      FROM vault_entry_tags vet
@@ -101,7 +101,7 @@ export async function listVaultEntryTags(entryId: number): Promise<VaultTagRow[]
   return result.rows as VaultTagRow[];
 }
 
-export async function setVaultEntryTags(entryId: number, tagIds: number[]): Promise<void> {
+export async function setVaultEntryTags(entryId: string, tagIds: string[]): Promise<void> {
   await pool.query('DELETE FROM vault_entry_tags WHERE vault_entry_id = $1', [entryId]);
   for (const tagId of tagIds) {
     await pool.query(
@@ -111,7 +111,7 @@ export async function setVaultEntryTags(entryId: number, tagIds: number[]): Prom
   }
 }
 
-export async function listVaultFiles(entryId: number): Promise<VaultFileRow[]> {
+export async function listVaultFiles(entryId: string): Promise<VaultFileRow[]> {
   const result = await pool.query(
     `SELECT id, vault_entry_id, original_filename, content_type, size_bytes, storage_status, uploaded_by_user_id, uploaded_at, available_at
      FROM vault_files WHERE vault_entry_id = $1 ORDER BY uploaded_at ASC`,
@@ -128,21 +128,21 @@ export async function writeVaultAuditLog(input: Record<string, unknown>): Promis
   );
 }
 
-export async function findVaultFile(fileId: number): Promise<VaultFileRow | undefined> {
+export async function findVaultFile(fileId: string): Promise<VaultFileRow | undefined> {
   const result = await pool.query('SELECT * FROM vault_files WHERE id = $1', [fileId]);
   return result.rows[0] as VaultFileRow | undefined;
 }
 
-export async function createVaultFile(input: Record<string, unknown>): Promise<number> {
+export async function createVaultFile(input: Record<string, unknown>): Promise<string> {
   const result = await pool.query(
     `INSERT INTO vault_files (vault_entry_id, storage_key, original_filename, content_type, size_bytes, storage_status, uploaded_by_user_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
     [input.vaultEntryId, input.storageKey, input.originalFilename, input.contentType, input.sizeBytes, input.storageStatus, input.uploadedByUserId],
   );
-  return result.rows[0].id as number;
+  return result.rows[0].id as string;
 }
 
-export async function updateVaultFileStatus(fileId: number, input: { storageStatus: string; checksum?: string | null }): Promise<void> {
+export async function updateVaultFileStatus(fileId: string, input: { storageStatus: string; checksum?: string | null }): Promise<void> {
   const shouldUpdateChecksum = Object.prototype.hasOwnProperty.call(input, 'checksum');
   const parameters = [input.storageStatus, shouldUpdateChecksum, input.checksum ?? null, fileId];
   if (input.storageStatus === 'available') {
@@ -175,7 +175,7 @@ export async function listStalePendingVaultFiles(olderThanHours: number): Promis
   return result.rows as VaultFileRow[];
 }
 
-export async function deleteVaultFile(fileId: number): Promise<void> {
+export async function deleteVaultFile(fileId: string): Promise<void> {
   await pool.query(
     "UPDATE vault_files SET storage_status = 'deleted', deleted_at = NOW() WHERE id = $1",
     [fileId],

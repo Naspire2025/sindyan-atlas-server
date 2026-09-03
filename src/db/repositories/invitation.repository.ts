@@ -2,7 +2,7 @@ import { pool } from '../connection';
 import type { OrganizationRole, ProjectRole } from '../../types/auth';
 
 export type InvitationRow = {
-  id: number;
+  id: string;
   email_normalized: string;
   name: string;
   role: OrganizationRole;
@@ -17,15 +17,15 @@ export async function createInvitation(input: {
   role: OrganizationRole;
   tokenHash: string;
   expiresAt: string;
-  createdByUserId: number;
-  projectAssignments: Array<{ projectId: number; projectRole: ProjectRole }>;
-}): Promise<number> {
+  createdByUserId: string;
+  projectAssignments: Array<{ projectId: string; projectRole: ProjectRole }>;
+}): Promise<string> {
   const result = await pool.query(`
     INSERT INTO invitations (email_normalized, name, role, token_hash, expires_at, created_by_user_id)
     VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING id
   `, [input.emailNormalized, input.name, input.role, input.tokenHash, input.expiresAt, input.createdByUserId]);
-  const invitationId = result.rows[0].id as number;
+  const invitationId = result.rows[0].id as string;
   for (const assignment of input.projectAssignments) {
     await pool.query(`
       INSERT INTO invitation_project_memberships (invitation_id, project_id, project_role)
@@ -45,24 +45,24 @@ export async function findPendingInvitation(tokenHash: string): Promise<Invitati
   return result.rows[0] as InvitationRow | undefined;
 }
 
-export async function listInvitationAssignments(invitationId: number): Promise<Array<{ project_id: number; project_role: ProjectRole }>> {
+export async function listInvitationAssignments(invitationId: string): Promise<Array<{ project_id: string; project_role: ProjectRole }>> {
   const result = await pool.query(`
     SELECT project_id, project_role
     FROM invitation_project_memberships
     WHERE invitation_id = $1
   `, [invitationId]);
-  return result.rows as Array<{ project_id: number; project_role: ProjectRole }>;
+  return result.rows as Array<{ project_id: string; project_role: ProjectRole }>;
 }
 
-export async function acceptInvitation(invitationId: number): Promise<void> {
+export async function acceptInvitation(invitationId: string): Promise<void> {
   await pool.query("UPDATE invitations SET accepted_at = NOW() WHERE id = $1", [invitationId]);
 }
 
-export async function revokeInvitation(invitationId: number): Promise<void> {
+export async function revokeInvitation(invitationId: string): Promise<void> {
   await pool.query("UPDATE invitations SET revoked_at = NOW() WHERE id = $1", [invitationId]);
 }
 
-export async function findInvitationById(invitationId: number): Promise<InvitationRow | undefined> {
+export async function findInvitationById(invitationId: string): Promise<InvitationRow | undefined> {
   const result = await pool.query(`
     SELECT id, email_normalized, name, role, expires_at
     FROM invitations WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL

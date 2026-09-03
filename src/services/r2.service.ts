@@ -41,7 +41,7 @@ function getClient(): S3Client {
   return cachedClient;
 }
 
-export function generateStorageKey(entryId: number): string {
+export function generateStorageKey(entryId: string): string {
   const uuid = crypto.randomUUID();
   return `vault/${entryId}/${uuid}`;
 }

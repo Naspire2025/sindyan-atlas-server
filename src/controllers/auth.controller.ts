@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { revokeSession } from '../db/repositories/session.repository';
 import { acceptInvitationToken, changePassword, inviteUser, login, resendInvitation, revokePendingInvitation } from '../services/auth.service';
 import { AppError } from '../utils/app-error.util';
+import { parseUuid } from '../utils/request.util';
 
 function requireLoginInput(body: unknown): { email: string; password: string } {
   const input = body as { email?: unknown; password?: unknown };
@@ -54,8 +55,7 @@ export async function changePasswordController(request: Request, response: Respo
 export async function resendInvitationController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
     if (!request.user) throw new AppError(401, 'Authentication is required.');
-    const invitationId = Number(request.params.id);
-    if (!Number.isInteger(invitationId) || invitationId <= 0) throw new AppError(404, 'Invitation unavailable.');
+    const invitationId = parseUuid(request.params.id, 'Invitation unavailable.');
     await resendInvitation(request.user, invitationId);
     response.status(204).send();
   } catch (error) { next(error); }
@@ -64,8 +64,7 @@ export async function resendInvitationController(request: Request, response: Res
 export function revokeInvitationController(request: Request, response: Response, next: NextFunction): void {
   try {
     if (!request.user) throw new AppError(401, 'Authentication is required.');
-    const invitationId = Number(request.params.id);
-    if (!Number.isInteger(invitationId) || invitationId <= 0) throw new AppError(404, 'Invitation unavailable.');
+    const invitationId = parseUuid(request.params.id, 'Invitation unavailable.');
     revokePendingInvitation(request.user, invitationId);
     response.status(204).send();
   } catch (error) { next(error); }

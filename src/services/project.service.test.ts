@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { pool } from '../db/connection';
 import { createProject } from './project.service';
 
-const admin = { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' as const, status: 'active' as const };
+const admin = { id: '00000000-0000-7000-8000-000000000001', name: 'Admin', email: 'admin@example.com', role: 'admin' as const, status: 'active' as const };
 
 test('createProject writes the project and external links in one transaction', async (context) => {
   const statements: string[] = [];
@@ -13,14 +13,14 @@ test('createProject writes the project and external links in one transaction', a
     query: async (sql: string) => {
       const normalizedSql = sql.replace(/\s+/g, ' ').trim();
       statements.push(normalizedSql);
-      if (normalizedSql.startsWith('INSERT INTO projects')) return { rows: [{ id: 42 }] };
+      if (normalizedSql.startsWith('INSERT INTO projects')) return { rows: [{ id: '00000000-0000-7000-8000-0000000000a1' }] };
       return { rows: [] };
     },
     release: () => statements.push('RELEASE'),
   };
 
   pool.connect = async () => client as never;
-  pool.query = (async () => ({ rows: [{ id: 42, name: 'Atlas Launch' }] })) as unknown as typeof pool.query;
+  pool.query = (async () => ({ rows: [{ id: '00000000-0000-7000-8000-0000000000a1', name: 'Atlas Launch' }] })) as unknown as typeof pool.query;
   context.after(() => {
     pool.connect = originalConnect;
     pool.query = originalQuery;
@@ -36,7 +36,7 @@ test('createProject writes the project and external links in one transaction', a
     ],
   });
 
-  assert.equal(project.id, 42);
+  assert.equal(project.id, '00000000-0000-7000-8000-0000000000a1');
   assert.equal(statements[0], 'BEGIN');
   assert.equal(statements.filter((sql) => sql.startsWith('INSERT INTO project_links')).length, 2);
   assert.equal(statements.at(-2), 'COMMIT');
@@ -50,7 +50,7 @@ test('createProject rolls back when a related link cannot be stored', async (con
     query: async (sql: string) => {
       const normalizedSql = sql.replace(/\s+/g, ' ').trim();
       statements.push(normalizedSql);
-      if (normalizedSql.startsWith('INSERT INTO projects')) return { rows: [{ id: 43 }] };
+      if (normalizedSql.startsWith('INSERT INTO projects')) return { rows: [{ id: '00000000-0000-7000-8000-0000000000a3' }] };
       if (normalizedSql.startsWith('INSERT INTO project_links')) throw new Error('Simulated link insert failure');
       return { rows: [] };
     },

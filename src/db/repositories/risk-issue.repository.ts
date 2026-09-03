@@ -1,9 +1,9 @@
 import { pool } from '../connection';
 
-export type RiskRow = Record<string, unknown> & { id: number; project_id: number };
-export type IssueRow = Record<string, unknown> & { id: number; project_id: number };
+export type RiskRow = Record<string, unknown> & { id: string; project_id: string };
+export type IssueRow = Record<string, unknown> & { id: string; project_id: string };
 
-export async function findRisk(riskId: number): Promise<RiskRow | undefined> {
+export async function findRisk(riskId: string): Promise<RiskRow | undefined> {
   const result = await pool.query(
     `SELECT r.*, u.name AS owner_name
      FROM risks r LEFT JOIN users u ON u.id = r.owner_user_id
@@ -13,7 +13,7 @@ export async function findRisk(riskId: number): Promise<RiskRow | undefined> {
   return result.rows[0] as RiskRow | undefined;
 }
 
-export async function listRisksForProject(projectId: number): Promise<RiskRow[]> {
+export async function listRisksForProject(projectId: string): Promise<RiskRow[]> {
   const result = await pool.query(
     `SELECT r.*, u.name AS owner_name
      FROM risks r LEFT JOIN users u ON u.id = r.owner_user_id
@@ -23,16 +23,16 @@ export async function listRisksForProject(projectId: number): Promise<RiskRow[]>
   return result.rows as RiskRow[];
 }
 
-export async function createRisk(input: Record<string, unknown>): Promise<number> {
+export async function createRisk(input: Record<string, unknown>): Promise<string> {
   const result = await pool.query(
     `INSERT INTO risks (project_id, title, description, severity, probability, owner_user_id, due_date, status, mitigation_progress, mitigation_note, created_by_user_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
     [input.projectId, input.title, input.description, input.severity, input.probability, input.ownerUserId, input.dueDate, input.status, input.mitigationProgress, input.mitigationNote, input.createdByUserId],
   );
-  return result.rows[0].id as number;
+  return result.rows[0].id as string;
 }
 
-export async function updateRisk(riskId: number, input: Record<string, unknown>): Promise<void> {
+export async function updateRisk(riskId: string, input: Record<string, unknown>): Promise<void> {
   await pool.query(
     `UPDATE risks
      SET title = $1, description = $2, severity = $3, probability = $4,
@@ -44,11 +44,11 @@ export async function updateRisk(riskId: number, input: Record<string, unknown>)
   );
 }
 
-export async function deleteRisk(riskId: number): Promise<void> {
+export async function deleteRisk(riskId: string): Promise<void> {
   await pool.query('DELETE FROM risks WHERE id = $1', [riskId]);
 }
 
-export async function findIssue(issueId: number): Promise<IssueRow | undefined> {
+export async function findIssue(issueId: string): Promise<IssueRow | undefined> {
   const result = await pool.query(
     `SELECT i.*, u.name AS owner_name
      FROM issues i LEFT JOIN users u ON u.id = i.owner_user_id
@@ -58,7 +58,7 @@ export async function findIssue(issueId: number): Promise<IssueRow | undefined> 
   return result.rows[0] as IssueRow | undefined;
 }
 
-export async function listIssuesForProject(projectId: number): Promise<IssueRow[]> {
+export async function listIssuesForProject(projectId: string): Promise<IssueRow[]> {
   const result = await pool.query(
     `SELECT i.*, u.name AS owner_name
      FROM issues i LEFT JOIN users u ON u.id = i.owner_user_id
@@ -68,16 +68,16 @@ export async function listIssuesForProject(projectId: number): Promise<IssueRow[
   return result.rows as IssueRow[];
 }
 
-export async function createIssue(input: Record<string, unknown>): Promise<number> {
+export async function createIssue(input: Record<string, unknown>): Promise<string> {
   const result = await pool.query(
     `INSERT INTO issues (project_id, title, description, priority, owner_user_id, target_resolution_date, status, resolution_progress, resolution_note, created_by_user_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
     [input.projectId, input.title, input.description, input.priority, input.ownerUserId, input.targetResolutionDate, input.status, input.resolutionProgress, input.resolutionNote, input.createdByUserId],
   );
-  return result.rows[0].id as number;
+  return result.rows[0].id as string;
 }
 
-export async function updateIssue(issueId: number, input: Record<string, unknown>): Promise<void> {
+export async function updateIssue(issueId: string, input: Record<string, unknown>): Promise<void> {
   await pool.query(
     `UPDATE issues
      SET title = $1, description = $2, priority = $3,
@@ -89,6 +89,6 @@ export async function updateIssue(issueId: number, input: Record<string, unknown
   );
 }
 
-export async function deleteIssue(issueId: number): Promise<void> {
+export async function deleteIssue(issueId: string): Promise<void> {
   await pool.query('DELETE FROM issues WHERE id = $1', [issueId]);
 }

@@ -1,9 +1,9 @@
 import type { Pool, PoolClient } from 'pg';
 import { pool } from '../connection';
 
-export type ProjectRow = Record<string, unknown> & { id: number };
+export type ProjectRow = Record<string, unknown> & { id: string };
 
-export async function findProject(projectId: number): Promise<ProjectRow | undefined> {
+export async function findProject(projectId: string): Promise<ProjectRow | undefined> {
   const result = await pool.query(`
     SELECT projects.*, owner_user.name AS owner_name
     FROM projects
@@ -13,7 +13,7 @@ export async function findProject(projectId: number): Promise<ProjectRow | undef
   return result.rows[0] as ProjectRow | undefined;
 }
 
-export async function listProjectsForUser(userId: number, isAdmin: boolean): Promise<ProjectRow[]> {
+export async function listProjectsForUser(userId: string, isAdmin: boolean): Promise<ProjectRow[]> {
   if (isAdmin) {
     const result = await pool.query(`
       SELECT p.*, owner_user.name AS owner_name,
@@ -44,7 +44,7 @@ export async function listProjectsForUser(userId: number, isAdmin: boolean): Pro
   return result.rows as ProjectRow[];
 }
 
-export async function listProjectTasks(projectId: number): Promise<ProjectRow[]> {
+export async function listProjectTasks(projectId: string): Promise<ProjectRow[]> {
   const result = await pool.query(`
     SELECT tasks.*, users.name AS assignee_name
     FROM tasks
@@ -55,7 +55,7 @@ export async function listProjectTasks(projectId: number): Promise<ProjectRow[]>
   return result.rows as ProjectRow[];
 }
 
-export async function getProjectTaskSummary(projectId: number): Promise<Record<string, number>> {
+export async function getProjectTaskSummary(projectId: string): Promise<Record<string, number>> {
   const result = await pool.query(`
     SELECT COUNT(*)::int AS total_tasks,
       COUNT(*) FILTER (WHERE status = 'done')::int AS done_tasks,
@@ -66,7 +66,7 @@ export async function getProjectTaskSummary(projectId: number): Promise<Record<s
   return result.rows[0] as Record<string, number>;
 }
 
-export async function listProjectMilestones(projectId: number): Promise<ProjectRow[]> {
+export async function listProjectMilestones(projectId: string): Promise<ProjectRow[]> {
   const result = await pool.query(`
     SELECT milestones.*, project_phases.name AS phase_name
     FROM milestones
@@ -77,7 +77,7 @@ export async function listProjectMilestones(projectId: number): Promise<ProjectR
   return result.rows as ProjectRow[];
 }
 
-export async function findMilestoneDetail(milestoneId: number): Promise<ProjectRow | undefined> {
+export async function findMilestoneDetail(milestoneId: string): Promise<ProjectRow | undefined> {
   const result = await pool.query(`
     SELECT milestones.*, project_phases.name AS phase_name,
       projects.name AS project_name
@@ -89,7 +89,7 @@ export async function findMilestoneDetail(milestoneId: number): Promise<ProjectR
   return result.rows[0] as ProjectRow | undefined;
 }
 
-export async function listMilestoneTasks(milestoneId: number): Promise<ProjectRow[]> {
+export async function listMilestoneTasks(milestoneId: string): Promise<ProjectRow[]> {
   const result = await pool.query(`
     SELECT tasks.id, tasks.title, tasks.status, tasks.priority, tasks.due_date,
       tasks.assignee_user_id, tasks.project_id, users.name AS assignee_name,
@@ -103,7 +103,7 @@ export async function listMilestoneTasks(milestoneId: number): Promise<ProjectRo
   return result.rows as ProjectRow[];
 }
 
-export async function listProjectMilestoneMembers(milestoneId: number): Promise<ProjectRow[]> {
+export async function listProjectMilestoneMembers(milestoneId: string): Promise<ProjectRow[]> {
   const result = await pool.query(`
     SELECT DISTINCT users.id AS user_id, users.name, users.email_display AS email,
       project_memberships.project_role
@@ -117,7 +117,7 @@ export async function listProjectMilestoneMembers(milestoneId: number): Promise<
   return result.rows as ProjectRow[];
 }
 
-export async function listProjectMembers(projectId: number): Promise<ProjectRow[]> {
+export async function listProjectMembers(projectId: string): Promise<ProjectRow[]> {
   const result = await pool.query(`
     SELECT users.id, users.id AS user_id, project_memberships.project_id,
       users.name, users.email_display AS email, users.role, users.status, project_memberships.project_role
@@ -131,7 +131,7 @@ export async function listProjectMembers(projectId: number): Promise<ProjectRow[
 
 type Queryable = Pick<Pool | PoolClient, 'query'>;
 
-export async function createProjectRecord(input: Record<string, unknown>, database: Queryable = pool): Promise<number> {
+export async function createProjectRecord(input: Record<string, unknown>, database: Queryable = pool): Promise<string> {
   const result = await database.query(`
     INSERT INTO projects (
       name, description, owner_user_id, status, priority, start_date, deadline,
@@ -145,10 +145,10 @@ export async function createProjectRecord(input: Record<string, unknown>, databa
     input.startDate, input.deadline, input.websiteUrl, input.driveFolderUrl,
     input.budgetAllocatedAmount, input.budgetCurrency
   ]);
-  return Number(result.rows[0].id);
+  return result.rows[0].id as string;
 }
 
-export async function updateProjectRecord(projectId: number, input: Record<string, unknown>): Promise<void> {
+export async function updateProjectRecord(projectId: string, input: Record<string, unknown>): Promise<void> {
   await pool.query(`
     UPDATE projects SET
       name = $1, description = $2, owner_user_id = $3,
@@ -165,6 +165,6 @@ export async function updateProjectRecord(projectId: number, input: Record<strin
   ]);
 }
 
-export async function deleteProjectRecord(projectId: number): Promise<void> {
+export async function deleteProjectRecord(projectId: string): Promise<void> {
   await pool.query('DELETE FROM projects WHERE id = $1', [projectId]);
 }

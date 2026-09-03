@@ -28,14 +28,14 @@ export async function listOrganizationUsers(actor: AuthenticatedUser): Promise<A
   return listUsers();
 }
 
-export async function getOrganizationUser(actor: AuthenticatedUser, userId: number): Promise<AuthenticatedUser> {
+export async function getOrganizationUser(actor: AuthenticatedUser, userId: string): Promise<AuthenticatedUser> {
   requireAdmin(actor);
   const user = await findUserById(userId);
   if (!user) throw new AppError(404, 'User unavailable.');
   return user;
 }
 
-async function canViewMember(actor: AuthenticatedUser, userId: number): Promise<void> {
+async function canViewMember(actor: AuthenticatedUser, userId: string): Promise<void> {
   if (actor.role === 'admin' || actor.id === userId) return;
   const sharedResult = await pool.query(`
     SELECT 1
@@ -47,7 +47,7 @@ async function canViewMember(actor: AuthenticatedUser, userId: number): Promise<
   if (!sharedResult.rows[0]) throw new AppError(404, 'Member unavailable.');
 }
 
-export async function getMemberSummary(actor: AuthenticatedUser, userId: number) {
+export async function getMemberSummary(actor: AuthenticatedUser, userId: string) {
   await canViewMember(actor, userId);
   const user = await findUserById(userId);
   if (!user) throw new AppError(404, 'User unavailable.');
@@ -63,7 +63,7 @@ export async function getMemberSummary(actor: AuthenticatedUser, userId: number)
   };
 }
 
-export async function updateOrganizationUser(actor: AuthenticatedUser, userId: number, body: unknown): Promise<AuthenticatedUser> {
+export async function updateOrganizationUser(actor: AuthenticatedUser, userId: string, body: unknown): Promise<AuthenticatedUser> {
   requireAdmin(actor);
   const existing = await findUserById(userId);
   if (!existing) throw new AppError(404, 'User unavailable.');

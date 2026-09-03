@@ -3,6 +3,7 @@ import { findMilestoneDetail, listMilestoneTasks, listProjectMilestoneMembers } 
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { isIsoDate } from '../utils/date.util';
+import { isUuid } from '../utils/request.util';
 import { requireAdmin, requireProjectAccess, requireProjectLead } from './project-access.service';
 
 const MILESTONE_STATUSES = new Set(['not_started', 'in_progress', 'done', 'missed']);
@@ -18,9 +19,9 @@ function optionalDate(value: unknown): string | null {
   return value;
 }
 
-function optionalId(value: unknown): number | null {
+function optionalId(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
-  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) throw new AppError(400, 'Invalid identifier.');
+  if (!isUuid(value)) throw new AppError(400, 'Invalid identifier.');
   return value;
 }
 
@@ -29,12 +30,12 @@ function nonNegativeInteger(value: unknown, field: string): number {
   return value;
 }
 
-async function requireProjectRecord(projectId: number): Promise<void> {
+async function requireProjectRecord(projectId: string): Promise<void> {
   const result = await pool.query('SELECT id FROM projects WHERE id = $1', [projectId]);
   if (!result.rows[0]) throw new AppError(404, 'Project unavailable.');
 }
 
-async function validatePhase(projectId: number, phaseId: number | null): Promise<void> {
+async function validatePhase(projectId: string, phaseId: string | null): Promise<void> {
   if (phaseId) {
     const result = await pool.query('SELECT id FROM project_phases WHERE id = $1 AND project_id = $2', [phaseId, projectId]);
     if (!result.rows[0]) {
@@ -43,13 +44,13 @@ async function validatePhase(projectId: number, phaseId: number | null): Promise
   }
 }
 
-export async function listProjectLinks(user: AuthenticatedUser, projectId: number): Promise<Record<string, unknown>[]> {
+export async function listProjectLinks(user: AuthenticatedUser, projectId: string): Promise<Record<string, unknown>[]> {
   await requireProjectAccess(user, projectId);
   const result = await pool.query('SELECT * FROM project_links WHERE project_id = $1 ORDER BY position, id', [projectId]);
   return result.rows;
 }
 
-export async function createProjectLink(user: AuthenticatedUser, projectId: number, body: unknown): Promise<Record<string, unknown>> {
+export async function createProjectLink(user: AuthenticatedUser, projectId: string, body: unknown): Promise<Record<string, unknown>> {
   await requireProjectLead(user, projectId);
   const input = body as { label?: unknown; link_type?: unknown; url?: unknown; position?: unknown };
   const label = requiredText(input.label, 'label');
@@ -63,13 +64,13 @@ export async function createProjectLink(user: AuthenticatedUser, projectId: numb
   return linkResult.rows[0];
 }
 
-export async function deleteProjectLink(user: AuthenticatedUser, projectId: number, linkId: number): Promise<void> {
+export async function deleteProjectLink(user: AuthenticatedUser, projectId: string, linkId: string): Promise<void> {
   await requireProjectLead(user, projectId);
   const result = await pool.query('DELETE FROM project_links WHERE id = $1 AND project_id = $2', [linkId, projectId]);
   if (!result.rowCount) throw new AppError(404, 'Project link unavailable.');
 }
 
-export async function updateProjectLink(user: AuthenticatedUser, projectId: number, linkId: number, body: unknown): Promise<Record<string, unknown>> {
+export async function updateProjectLink(user: AuthenticatedUser, projectId: string, linkId: string, body: unknown): Promise<Record<string, unknown>> {
   await requireProjectLead(user, projectId);
   const existingResult = await pool.query('SELECT * FROM project_links WHERE id = $1 AND project_id = $2', [linkId, projectId]);
   const existing = existingResult.rows[0] as Record<string, unknown> | undefined;
@@ -87,13 +88,13 @@ export async function updateProjectLink(user: AuthenticatedUser, projectId: numb
   return updatedResult.rows[0];
 }
 
-export async function listProjectPhases(user: AuthenticatedUser, projectId: number): Promise<Record<string, unknown>[]> {
+export async function listProjectPhases(user: AuthenticatedUser, projectId: string): Promise<Record<string, unknown>[]> {
   await requireProjectAccess(user, projectId);
   const result = await pool.query('SELECT * FROM project_phases WHERE project_id = $1 ORDER BY position, id', [projectId]);
   return result.rows;
 }
 
-export async function createProjectPhase(user: AuthenticatedUser, projectId: number, body: unknown): Promise<Record<string, unknown>> {
+export async function createProjectPhase(user: AuthenticatedUser, projectId: string, body: unknown): Promise<Record<string, unknown>> {
   await requireProjectLead(user, projectId);
   const input = body as { name?: unknown; position?: unknown; start_date?: unknown; end_date?: unknown };
   const startDate = optionalDate(input.start_date);
@@ -107,7 +108,7 @@ export async function createProjectPhase(user: AuthenticatedUser, projectId: num
   return phaseResult.rows[0];
 }
 
-export async function updateProjectPhase(user: AuthenticatedUser, projectId: number, phaseId: number, body: unknown): Promise<Record<string, unknown>> {
+export async function updateProjectPhase(user: AuthenticatedUser, projectId: string, phaseId: string, body: unknown): Promise<Record<string, unknown>> {
   await requireProjectLead(user, projectId);
   const existingResult = await pool.query('SELECT * FROM project_phases WHERE id = $1 AND project_id = $2', [phaseId, projectId]);
   const existing = existingResult.rows[0] as Record<string, unknown> | undefined;
@@ -125,7 +126,7 @@ export async function updateProjectPhase(user: AuthenticatedUser, projectId: num
   return updatedResult.rows[0];
 }
 
-export async function listProjectMilestones(user: AuthenticatedUser, projectId: number): Promise<Record<string, unknown>[]> {
+export async function listProjectMilestones(user: AuthenticatedUser, projectId: string): Promise<Record<string, unknown>[]> {
   await requireProjectAccess(user, projectId);
   const result = await pool.query(`
     SELECT milestones.*, project_phases.name AS phase_name
@@ -137,7 +138,7 @@ export async function listProjectMilestones(user: AuthenticatedUser, projectId: 
   return result.rows;
 }
 
-export async function createProjectMilestone(user: AuthenticatedUser, projectId: number, body: unknown): Promise<Record<string, unknown>> {
+export async function createProjectMilestone(user: AuthenticatedUser, projectId: string, body: unknown): Promise<Record<string, unknown>> {
   await requireProjectLead(user, projectId);
   const input = body as { title?: unknown; target_date?: unknown; phase_id?: unknown; status?: unknown };
   const phaseId = optionalId(input.phase_id);
@@ -152,14 +153,14 @@ export async function createProjectMilestone(user: AuthenticatedUser, projectId:
   return milestoneResult.rows[0];
 }
 
-export async function updateMilestone(user: AuthenticatedUser, milestoneId: number, body: unknown): Promise<Record<string, unknown>> {
+export async function updateMilestone(user: AuthenticatedUser, milestoneId: string, body: unknown): Promise<Record<string, unknown>> {
   const existingResult = await pool.query('SELECT * FROM milestones WHERE id = $1', [milestoneId]);
   const existing = existingResult.rows[0] as Record<string, unknown> | undefined;
   if (!existing) throw new AppError(404, 'Milestone unavailable.');
-  const projectId = Number(existing.project_id);
+  const projectId = String(existing.project_id);
   await requireProjectLead(user, projectId);
   const input = body as { title?: unknown; target_date?: unknown; phase_id?: unknown; status?: unknown };
-  const phaseId = input.phase_id === undefined ? Number(existing.phase_id) || null : optionalId(input.phase_id);
+  const phaseId = input.phase_id === undefined ? (existing.phase_id ? String(existing.phase_id) : null) : optionalId(input.phase_id);
   await validatePhase(projectId, phaseId);
   const status = input.status === undefined ? String(existing.status) : input.status;
   if (typeof status !== 'string' || !MILESTONE_STATUSES.has(status)) throw new AppError(400, 'Invalid milestone status.');
@@ -173,10 +174,10 @@ export async function updateMilestone(user: AuthenticatedUser, milestoneId: numb
   return updatedResult.rows[0];
 }
 
-export async function getMilestone(user: AuthenticatedUser, milestoneId: number): Promise<Record<string, unknown>> {
+export async function getMilestone(user: AuthenticatedUser, milestoneId: string): Promise<Record<string, unknown>> {
   const milestone = await findMilestoneDetail(milestoneId);
   if (!milestone) throw new AppError(404, 'Milestone unavailable.');
-  const projectId = Number(milestone.project_id);
+  const projectId = String(milestone.project_id);
   await requireProjectAccess(user, projectId);
   const [tasks, members] = await Promise.all([
     listMilestoneTasks(milestoneId),
@@ -186,15 +187,15 @@ export async function getMilestone(user: AuthenticatedUser, milestoneId: number)
   return { ...milestone, project_id: projectId, phase_name: milestone.phase_name, project_name: milestone.project_name, tasks, members, progress: tasks.length ? Math.round((done / tasks.length) * 100) : 0 };
 }
 
-export async function deleteMilestone(user: AuthenticatedUser, milestoneId: number): Promise<void> {
+export async function deleteMilestone(user: AuthenticatedUser, milestoneId: string): Promise<void> {
   const milestoneResult = await pool.query('SELECT project_id FROM milestones WHERE id = $1', [milestoneId]);
-  const milestone = milestoneResult.rows[0] as { project_id: number } | undefined;
+  const milestone = milestoneResult.rows[0] as { project_id: string } | undefined;
   if (!milestone) throw new AppError(404, 'Milestone unavailable.');
   requireAdmin(user);
   await pool.query('DELETE FROM milestones WHERE id = $1', [milestoneId]);
 }
 
-export async function deleteProjectPhase(user: AuthenticatedUser, projectId: number, phaseId: number): Promise<void> {
+export async function deleteProjectPhase(user: AuthenticatedUser, projectId: string, phaseId: string): Promise<void> {
   await requireProjectLead(user, projectId);
   await requireProjectRecord(projectId);
   const milestoneResult = await pool.query('SELECT COUNT(*) AS count FROM milestones WHERE project_id = $1 AND phase_id = $2', [projectId, phaseId]);

@@ -1,13 +1,13 @@
 import { pool } from '../connection';
 
 export type OverviewProject = Record<string, unknown> & {
-  id: number;
+  id: string;
   name: string;
   status: string;
   priority: string;
 };
 
-export async function fetchOverviewProjects(userId: number, isAdmin: boolean): Promise<OverviewProject[]> {
+export async function fetchOverviewProjects(userId: string, isAdmin: boolean): Promise<OverviewProject[]> {
   const membershipClause = isAdmin ? '' : 'WHERE p.id IN (SELECT project_id FROM project_memberships WHERE user_id = $1)';
   const parameters = isAdmin ? [] : [userId];
   const result = await pool.query(`
@@ -27,7 +27,7 @@ export async function fetchOverviewProjects(userId: number, isAdmin: boolean): P
   return result.rows as OverviewProject[];
 }
 
-export async function fetchOverdueMilestones(userId: number, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+export async function fetchOverdueMilestones(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
   const membershipClause = isAdmin ? '' : 'm.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const parameters = isAdmin ? [] : [userId];
   const result = await pool.query(`
@@ -40,7 +40,7 @@ export async function fetchOverdueMilestones(userId: number, isAdmin: boolean): 
   return result.rows as Record<string, unknown>[];
 }
 
-export async function fetchBlockedTasks(userId: number, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+export async function fetchBlockedTasks(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
   const membershipClause = isAdmin ? '' : 't.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const parameters = isAdmin ? [] : [userId];
   const result = await pool.query(`
@@ -55,7 +55,7 @@ export async function fetchBlockedTasks(userId: number, isAdmin: boolean): Promi
   return result.rows as Record<string, unknown>[];
 }
 
-export async function fetchOverdueTasks(userId: number, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+export async function fetchOverdueTasks(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
   const membershipClause = isAdmin ? '' : 't.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const parameters = isAdmin ? [] : [userId];
   const result = await pool.query(`
@@ -70,7 +70,7 @@ export async function fetchOverdueTasks(userId: number, isAdmin: boolean): Promi
   return result.rows as Record<string, unknown>[];
 }
 
-export async function fetchStalledTasks(userId: number, isAdmin: boolean, stalledDays: number): Promise<Record<string, unknown>[]> {
+export async function fetchStalledTasks(userId: string, isAdmin: boolean, stalledDays: number): Promise<Record<string, unknown>[]> {
   const membershipClause = isAdmin ? '' : 't.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const daysParameter = isAdmin ? 1 : 2;
   const parameters = isAdmin ? [stalledDays] : [userId, stalledDays];
@@ -87,7 +87,7 @@ export async function fetchStalledTasks(userId: number, isAdmin: boolean, stalle
   return result.rows as Record<string, unknown>[];
 }
 
-export async function fetchHighSeverityRisks(userId: number, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+export async function fetchHighSeverityRisks(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
   const membershipClause = isAdmin ? '' : 'r.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const parameters = isAdmin ? [] : [userId];
   const result = await pool.query(`
@@ -102,7 +102,7 @@ export async function fetchHighSeverityRisks(userId: number, isAdmin: boolean): 
   return result.rows as Record<string, unknown>[];
 }
 
-export async function fetchOverdueIssues(userId: number, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+export async function fetchOverdueIssues(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
   const membershipClause = isAdmin ? '' : 'i.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const parameters = isAdmin ? [] : [userId];
   const result = await pool.query(`
@@ -117,7 +117,7 @@ export async function fetchOverdueIssues(userId: number, isAdmin: boolean): Prom
   return result.rows as Record<string, unknown>[];
 }
 
-export async function countOpenRisks(userId: number, isAdmin: boolean): Promise<number> {
+export async function countOpenRisks(userId: string, isAdmin: boolean): Promise<number> {
   const membershipClause = isAdmin ? '' : 'project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const parameters = isAdmin ? [] : [userId];
   const result = await pool.query(
@@ -127,7 +127,7 @@ export async function countOpenRisks(userId: number, isAdmin: boolean): Promise<
   return result.rows[0].count as number;
 }
 
-export async function countOpenIssues(userId: number, isAdmin: boolean): Promise<number> {
+export async function countOpenIssues(userId: string, isAdmin: boolean): Promise<number> {
   const membershipClause = isAdmin ? '' : 'project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const parameters = isAdmin ? [] : [userId];
   const result = await pool.query(

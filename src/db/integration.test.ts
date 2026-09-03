@@ -28,11 +28,11 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
       { label: 'Repository', link_type: 'github', url: 'https://github.com/example/alpha' },
       { label: 'Design', link_type: 'figma', url: 'https://figma.com/file/example' },
     ],
-  }) as { id: number };
+  }) as { id: string };
   const persistedProject = await pool.query('SELECT owner_user_id, start_date, deadline FROM projects WHERE id = $1', [project1.id]);
   assert.deepEqual(persistedProject.rows[0], { owner_user_id: leadId, start_date: '2026-01-01', deadline: '2026-03-31' });
-  const project2 = await createProject(admin, { name: 'Beta Project' }) as { id: number };
-  const project3 = await createProject(admin, { name: 'Restricted Project' }) as { id: number };
+  const project2 = await createProject(admin, { name: 'Beta Project' }) as { id: string };
+  const project3 = await createProject(admin, { name: 'Restricted Project' }) as { id: string };
   const projectLinks = await pool.query('SELECT label, link_type, url FROM project_links WHERE project_id = $1 ORDER BY position', [project1.id]);
   assert.deepEqual(projectLinks.rows, [
     { label: 'Repository', link_type: 'github', url: 'https://github.com/example/alpha' },
@@ -103,13 +103,13 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
   assert.equal(listedMilestones[0].phase_name, 'Delivery');
   await updateTask(admin, secondTask.id, { milestone_id: null });
   assert.equal((await pool.query('SELECT milestone_id FROM tasks WHERE id = $1', [secondTask.id])).rows[0].milestone_id, null);
-  assert.equal((await updateMilestone(lead, releaseMilestone.id as number, { status: 'done' })).status, 'done');
+  assert.equal((await updateMilestone(lead, releaseMilestone.id as string, { status: 'done' })).status, 'done');
   await assert.rejects(
     createProjectMilestone(lead, project1.id, { title: 'Wrong phase', phase_id: externalPhase.id, target_date: '2026-03-20' }),
     { message: 'The phase must belong to this project.' },
   );
   await assert.rejects(
-    deleteProjectPhase(lead, project1.id, deliveryPhase.id as number),
+    deleteProjectPhase(lead, project1.id, deliveryPhase.id as string),
     { message: 'Move or delete this phase’s milestones before deleting the phase.' },
   );
   await assert.rejects(
@@ -179,7 +179,7 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
   } = require('../services/resource.service') as typeof import('../services/resource.service');
 
   await assert.rejects(
-    createCapacityProfileRecord(lead, 3, { effective_from: '2026-01-01', weekly_capacity_hours: 40 }),
+    createCapacityProfileRecord(lead, '00000000-0000-7000-8000-000000000003', { effective_from: '2026-01-01', weekly_capacity_hours: 40 }),
     { message: 'Administrator access is required.' },
   );
   await assert.rejects(
@@ -187,9 +187,9 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
     { message: 'Administrator access is required.' },
   );
 
-  const profile = await createCapacityProfileRecord(admin, 3, { effective_from: '2026-01-01', weekly_capacity_hours: 40 });
+  const profile = await createCapacityProfileRecord(admin, memberId, { effective_from: '2026-01-01', weekly_capacity_hours: 40 });
   assert.ok(profile);
-  assert.equal((await listUserCapacityProfiles(admin, 3)).length, 1);
+  assert.equal((await listUserCapacityProfiles(admin, memberId)).length, 1);
 
   const asset = await createAssetRecord(admin, { name: 'GPU Server', asset_type: 'hardware' });
   assert.ok(asset);

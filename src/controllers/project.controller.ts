@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { findProject, getProjectTaskSummary, listProjectMembers, listProjectMilestones, listProjectsForUser, listProjectTasks } from '../db/repositories/project.repository';
 import { requireProjectAccess } from '../services/project-access.service';
 import { AppError } from '../utils/app-error.util';
-import { parsePositiveId, requireUser } from '../utils/request.util';
+import { parseUuid, requireUser } from '../utils/request.util';
 import { createProject, deleteProject, updateProject } from '../services/project.service';
 import { listProjectLinks, listProjectPhases } from '../services/project-planning.service';
 
@@ -17,7 +17,7 @@ export async function listProjectsController(request: Request, response: Respons
 
 export async function getProjectController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
-    const projectId = parsePositiveId(request.params.id);
+    const projectId = parseUuid(request.params.id);
     const project = await findProject(projectId);
     if (!project) throw new AppError(404, 'Project unavailable.');
     await requireProjectAccess(requireUser(request.user), projectId);
@@ -46,7 +46,7 @@ export async function createProjectController(request: Request, response: Respon
 
 export async function updateProjectController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
-    response.json(await updateProject(requireUser(request.user), parsePositiveId(request.params.id), request.body));
+    response.json(await updateProject(requireUser(request.user), parseUuid(request.params.id), request.body));
   } catch (error) {
     next(error);
   }
@@ -54,7 +54,7 @@ export async function updateProjectController(request: Request, response: Respon
 
 export async function deleteProjectController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
-    await deleteProject(requireUser(request.user), parsePositiveId(request.params.id));
+    await deleteProject(requireUser(request.user), parseUuid(request.params.id));
     response.status(204).send();
   } catch (error) {
     next(error);

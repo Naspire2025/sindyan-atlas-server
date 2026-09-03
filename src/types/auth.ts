@@ -3,7 +3,7 @@ export type UserStatus = 'pending' | 'active' | 'suspended';
 export type ProjectRole = 'member' | 'project_lead';
 
 export type AuthenticatedUser = {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: OrganizationRole;
@@ -11,7 +11,7 @@ export type AuthenticatedUser = {
 };
 
 export type SessionIdentity = AuthenticatedUser & {
-  sessionId: number;
+  sessionId: string;
   expiresAt: string;
   absoluteExpiresAt: string;
 };

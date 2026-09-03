@@ -1,28 +1,28 @@
 import { pool } from '../connection';
 
-export type BudgetLineRow = Record<string, unknown> & { id: number; project_id: number };
-export type SpendRecordRow = Record<string, unknown> & { id: number; project_id: number };
+export type BudgetLineRow = Record<string, unknown> & { id: string; project_id: string };
+export type SpendRecordRow = Record<string, unknown> & { id: string; project_id: string };
 
-export async function findBudgetLine(budgetLineId: number): Promise<BudgetLineRow | undefined> {
+export async function findBudgetLine(budgetLineId: string): Promise<BudgetLineRow | undefined> {
   const result = await pool.query('SELECT * FROM project_budget_lines WHERE id = $1', [budgetLineId]);
   return result.rows[0] as BudgetLineRow | undefined;
 }
 
-export async function listBudgetLinesForProject(projectId: number): Promise<BudgetLineRow[]> {
+export async function listBudgetLinesForProject(projectId: string): Promise<BudgetLineRow[]> {
   const result = await pool.query('SELECT * FROM project_budget_lines WHERE project_id = $1 ORDER BY effective_date ASC, id ASC', [projectId]);
   return result.rows as BudgetLineRow[];
 }
 
-export async function createBudgetLine(input: Record<string, unknown>): Promise<number> {
+export async function createBudgetLine(input: Record<string, unknown>): Promise<string> {
   const result = await pool.query(`
     INSERT INTO project_budget_lines (project_id, category, planned_amount, currency, effective_date, note, created_by_user_id)
     VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING id
   `, [input.projectId, input.category, input.plannedAmount, input.currency, input.effectiveDate, input.note, input.createdByUserId]);
-  return result.rows[0].id as number;
+  return result.rows[0].id as string;
 }
 
-export async function updateBudgetLine(budgetLineId: number, input: Record<string, unknown>): Promise<void> {
+export async function updateBudgetLine(budgetLineId: string, input: Record<string, unknown>): Promise<void> {
   await pool.query(`
     UPDATE project_budget_lines
     SET category = $1, planned_amount = $2, currency = $3,
@@ -31,30 +31,30 @@ export async function updateBudgetLine(budgetLineId: number, input: Record<strin
   `, [input.category, input.plannedAmount, input.currency, input.effectiveDate, input.note, budgetLineId]);
 }
 
-export async function deleteBudgetLine(budgetLineId: number): Promise<void> {
+export async function deleteBudgetLine(budgetLineId: string): Promise<void> {
   await pool.query('DELETE FROM project_budget_lines WHERE id = $1', [budgetLineId]);
 }
 
-export async function findSpendRecord(spendRecordId: number): Promise<SpendRecordRow | undefined> {
+export async function findSpendRecord(spendRecordId: string): Promise<SpendRecordRow | undefined> {
   const result = await pool.query('SELECT * FROM spend_records WHERE id = $1', [spendRecordId]);
   return result.rows[0] as SpendRecordRow | undefined;
 }
 
-export async function listSpendRecordsForProject(projectId: number): Promise<SpendRecordRow[]> {
+export async function listSpendRecordsForProject(projectId: string): Promise<SpendRecordRow[]> {
   const result = await pool.query('SELECT * FROM spend_records WHERE project_id = $1 ORDER BY spent_on ASC, id ASC', [projectId]);
   return result.rows as SpendRecordRow[];
 }
 
-export async function createSpendRecord(input: Record<string, unknown>): Promise<number> {
+export async function createSpendRecord(input: Record<string, unknown>): Promise<string> {
   const result = await pool.query(`
     INSERT INTO spend_records (project_id, spent_on, amount, currency, category, note, recorded_by_user_id)
     VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING id
   `, [input.projectId, input.spentOn, input.amount, input.currency, input.category, input.note, input.recordedByUserId]);
-  return result.rows[0].id as number;
+  return result.rows[0].id as string;
 }
 
-export async function updateSpendRecord(spendRecordId: number, input: Record<string, unknown>): Promise<void> {
+export async function updateSpendRecord(spendRecordId: string, input: Record<string, unknown>): Promise<void> {
   await pool.query(`
     UPDATE spend_records
     SET spent_on = $1, amount = $2, currency = $3,
@@ -63,11 +63,11 @@ export async function updateSpendRecord(spendRecordId: number, input: Record<str
   `, [input.spentOn, input.amount, input.currency, input.category, input.note, spendRecordId]);
 }
 
-export async function deleteSpendRecord(spendRecordId: number): Promise<void> {
+export async function deleteSpendRecord(spendRecordId: string): Promise<void> {
   await pool.query('DELETE FROM spend_records WHERE id = $1', [spendRecordId]);
 }
 
-export async function computeFinancialSummary(projectId: number): Promise<{
+export async function computeFinancialSummary(projectId: string): Promise<{
   budget_allocated_amount: number | null;
   budget_currency: string | null;
   total_planned: number;

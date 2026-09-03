@@ -3,6 +3,7 @@ import { createProjectRecord, deleteProjectRecord, findProject, updateProjectRec
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { isIsoDate } from '../utils/date.util';
+import { isUuid } from '../utils/request.util';
 import { requireAdmin, requireProjectLead } from './project-access.service';
 
 const PROJECT_STATUSES = new Set(['planning', 'active', 'on_hold', 'blocked', 'completed', 'cancelled']);
@@ -27,9 +28,9 @@ function requiredName(value: unknown): string {
   return name;
 }
 
-function optionalIdentifier(value: unknown): number | null {
+function optionalIdentifier(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
-  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) throw new AppError(400, 'Invalid user identifier.');
+  if (!isUuid(value)) throw new AppError(400, 'Invalid user identifier.');
   return value;
 }
 
@@ -92,11 +93,11 @@ function parseProjectInput(body: unknown, existing?: ProjectRow): Record<string,
   };
 }
 
-async function validateProjectOwner(projectId: number, ownerUserId: unknown): Promise<void> {
+async function validateProjectOwner(projectId: string, ownerUserId: unknown): Promise<void> {
   if (ownerUserId === null) return;
   const ownerResult = await pool.query('SELECT id FROM users WHERE id = $1 AND status = $2', [ownerUserId, 'active']);
   if (!ownerResult.rows[0]) throw new AppError(400, 'Project owner must be an active user.');
-  if (projectId > 0) {
+  if (projectId) {
     const membershipResult = await pool.query('SELECT 1 FROM project_memberships WHERE project_id = $1 AND user_id = $2', [projectId, ownerUserId]);
     if (!membershipResult.rows[0]) throw new AppError(400, 'Project owner must be a project member.');
   }
@@ -110,14 +111,14 @@ export async function createProject(user: AuthenticatedUser, body: unknown): Pro
   if (typeof input.startDate === 'string' && typeof input.deadline === 'string' && input.deadline < input.startDate) {
     throw new AppError(400, 'deadline must not be before start_date.');
   }
-  await validateProjectOwner(0, input.ownerUserId);
+  await validateProjectOwner('', input.ownerUserId);
 
   const client = await pool.connect();
-  let projectId: number;
+  let projectId: string;
   try {
     await client.query('BEGIN');
     projectId = await createProjectRecord(input, client);
-    if (typeof input.ownerUserId === 'number') {
+    if (typeof input.ownerUserId === 'string') {
       await client.query(`
         INSERT INTO project_memberships (project_id, user_id, project_role)
         VALUES ($1, $2, $3)
@@ -141,7 +142,7 @@ export async function createProject(user: AuthenticatedUser, body: unknown): Pro
   return (await findProject(projectId)) as ProjectRow;
 }
 
-export async function updateProject(user: AuthenticatedUser, projectId: number, body: unknown): Promise<ProjectRow> {
+export async function updateProject(user: AuthenticatedUser, projectId: string, body: unknown): Promise<ProjectRow> {
   const existing = await findProject(projectId);
   if (!existing) throw new AppError(404, 'Project unavailable.');
   await requireProjectLead(user, projectId);
@@ -157,7 +158,7 @@ export async function updateProject(user: AuthenticatedUser, projectId: number, 
   return (await findProject(projectId)) as ProjectRow;
 }
 
-export async function deleteProject(user: AuthenticatedUser, projectId: number): Promise<void> {
+export async function deleteProject(user: AuthenticatedUser, projectId: string): Promise<void> {
   requireAdmin(user);
   if (!(await findProject(projectId))) throw new AppError(404, 'Project unavailable.');
   await deleteProjectRecord(projectId);

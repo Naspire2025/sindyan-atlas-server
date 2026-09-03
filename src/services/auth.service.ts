@@ -4,6 +4,7 @@ import { createUser, findActiveAdmin, findUserByEmail, activatePendingUser, upda
 import { acceptInvitation, createInvitation, findInvitationById, findPendingInvitation, listInvitationAssignments, revokeInvitation } from '../db/repositories/invitation.repository';
 import type { AuthenticatedUser, OrganizationRole, ProjectRole } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
+import { isUuid } from '../utils/request.util';
 import { hashPassword, verifyPassword } from '../utils/password.util';
 import { createOpaqueToken, hashToken } from '../utils/token.util';
 import { env } from '../config/env';
@@ -26,7 +27,7 @@ function addDays(date: Date, days: number): Date {
   return addHours(date, days * 24);
 }
 
-async function createSessionForUser(userId: number): Promise<NewSession> {
+async function createSessionForUser(userId: string): Promise<NewSession> {
   const now = new Date();
   const absoluteExpiresAt = addDays(now, env.sessionAbsoluteDays);
   const expiresAt = addHours(now, env.sessionIdleHours);
@@ -86,7 +87,7 @@ export async function login(input: { email: string; password: string }): Promise
   return { user: authenticatedUser, session: await createSessionForUser(user.id) };
 }
 
-export async function createSessionForAuthenticatedUser(userId: number): Promise<NewSession> {
+export async function createSessionForAuthenticatedUser(userId: string): Promise<NewSession> {
   return createSessionForUser(userId);
 }
 
@@ -113,14 +114,12 @@ function validatePassword(password: unknown): string {
   return password;
 }
 
-function validateProjectAssignments(value: unknown): Array<{ projectId: number; projectRole: ProjectRole }> {
+function validateProjectAssignments(value: unknown): Array<{ projectId: string; projectRole: ProjectRole }> {
   if (value === undefined) return [];
   if (!Array.isArray(value)) throw new AppError(400, 'project_assignments must be an array.');
   return value.map((assignment) => {
     const input = assignment as { project_id?: unknown; project_role?: unknown };
-    if (typeof input.project_id !== 'number' || !Number.isInteger(input.project_id) || input.project_id <= 0) {
-      throw new AppError(400, 'Each project assignment requires a valid project_id.');
-    }
+    if (!isUuid(input.project_id)) throw new AppError(400, 'Each project assignment requires a valid project_id.');
     if (input.project_role !== undefined && input.project_role !== 'member' && input.project_role !== 'project_lead') {
       throw new AppError(400, 'Invalid project role.');
     }
@@ -143,7 +142,7 @@ export async function inviteUser(creator: AuthenticatedUser, body: unknown): Pro
   const token = createOpaqueToken();
 
   const client = await pool.connect();
-  let invitationId: number;
+  let invitationId: string;
   try {
     await client.query('BEGIN');
     invitationId = await createInvitation({
@@ -171,7 +170,7 @@ export async function inviteUser(creator: AuthenticatedUser, body: unknown): Pro
   }
 }
 
-export async function resendInvitation(creator: AuthenticatedUser, invitationId: number): Promise<void> {
+export async function resendInvitation(creator: AuthenticatedUser, invitationId: string): Promise<void> {
   if (creator.role !== 'admin') throw new AppError(403, 'Administrator access is required.');
   const invitation = await findInvitationById(invitationId);
   if (!invitation) throw new AppError(404, 'Invitation unavailable.');
@@ -179,7 +178,7 @@ export async function resendInvitation(creator: AuthenticatedUser, invitationId:
   const assignments = await listInvitationAssignments(invitation.id);
 
   const client = await pool.connect();
-  let replacementId: number;
+  let replacementId: string;
   try {
     await client.query('BEGIN');
     replacementId = await createInvitation({
@@ -208,7 +207,7 @@ export async function resendInvitation(creator: AuthenticatedUser, invitationId:
   }
 }
 
-export async function revokePendingInvitation(creator: AuthenticatedUser, invitationId: number): Promise<void> {
+export async function revokePendingInvitation(creator: AuthenticatedUser, invitationId: string): Promise<void> {
   if (creator.role !== 'admin') throw new AppError(403, 'Administrator access is required.');
   if (!(await findInvitationById(invitationId))) throw new AppError(404, 'Invitation unavailable.');
   await revokeInvitation(invitationId);
@@ -221,7 +220,7 @@ export async function acceptInvitationToken(token: string, password: unknown): P
   const existingUser = await findUserByEmail(invitation.email_normalized);
 
   const client = await pool.connect();
-  let userId: number;
+  let userId: string;
   try {
     await client.query('BEGIN');
     const resolvedUserId = existingUser

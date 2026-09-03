@@ -20,6 +20,7 @@ import {
 import { decryptSecret, encryptSecret, isEncryptionConfigured } from './encryption.service';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
+import { isUuid, parseUuid } from '../utils/request.util';
 import { requireAdmin, requireProjectAccess, requireProjectLead } from './project-access.service';
 
 const ENTRY_TYPES = new Set(['external_link', 'markdown_note', 'credential', 'secret_key', 'file']);
@@ -36,9 +37,9 @@ function optionalText(value: unknown): string | null {
   return value.trim() || null;
 }
 
-function optionalIdentifier(value: unknown): number | null {
+function optionalIdentifier(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
-  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) throw new AppError(400, 'Invalid identifier.');
+  if (!isUuid(value)) throw new AppError(400, 'Invalid identifier.');
   return value;
 }
 
@@ -59,11 +60,11 @@ function validateUrlHttps(url: string, field: string): void {
   }
 }
 
-async function requireVaultAccess(user: AuthenticatedUser, entryId: number) {
+async function requireVaultAccess(user: AuthenticatedUser, entryId: string) {
   const entry = await findVaultEntry(entryId);
   if (!entry || entry.archived_at) throw new AppError(404, 'Vault entry unavailable.');
   if (entry.project_id) {
-    await requireProjectAccess(user, Number(entry.project_id));
+    await requireProjectAccess(user, String(entry.project_id));
   }
   return entry;
 }
@@ -72,7 +73,7 @@ function requireSecretAccess(user: AuthenticatedUser): void {
   requireAdmin(user);
 }
 
-async function recordAudit(entryId: number, userId: number, action: string, metadata?: Record<string, unknown>): Promise<void> {
+async function recordAudit(entryId: string, userId: string, action: string, metadata?: Record<string, unknown>): Promise<void> {
   await writeVaultAuditLog({
     vaultEntryId: entryId,
     vaultFileId: null,
@@ -84,15 +85,15 @@ async function recordAudit(entryId: number, userId: number, action: string, meta
 }
 
 export async function listEntries(user: AuthenticatedUser, query: { project_id?: string }) {
-  const filters: { projectId?: number; includeArchived?: boolean } = { includeArchived: false };
+  const filters: { projectId?: string; includeArchived?: boolean } = { includeArchived: false };
   if (query.project_id) {
-    const projectId = Number(query.project_id);
+    const projectId = parseUuid(query.project_id, 'project_id must be a valid UUID.');
     await requireProjectAccess(user, projectId);
     filters.projectId = projectId;
   }
   const entriesWithAccess = await Promise.all((await listVaultEntries(filters)).map(async (entry) => ({
     entry,
-    canAccess: !entry.project_id || user.role === 'admin' || await isProjectMember(user.id, Number(entry.project_id)),
+    canAccess: !entry.project_id || user.role === 'admin' || await isProjectMember(user.id, String(entry.project_id)),
   })));
   const entries = entriesWithAccess.filter(({ canAccess }) => canAccess).map(({ entry }) => entry);
   return Promise.all(entries.map(async (entry) => ({
@@ -102,7 +103,7 @@ export async function listEntries(user: AuthenticatedUser, query: { project_id?:
   })));
 }
 
-export async function getEntry(user: AuthenticatedUser, entryId: number) {
+export async function getEntry(user: AuthenticatedUser, entryId: string) {
   const entry = await requireVaultAccess(user, entryId);
   return {
     ...entry,
@@ -148,7 +149,7 @@ export async function createEntry(user: AuthenticatedUser, body: unknown) {
   }
 }
 
-export async function updateEntry(user: AuthenticatedUser, entryId: number, body: unknown) {
+export async function updateEntry(user: AuthenticatedUser, entryId: string, body: unknown) {
   const entry = await requireVaultAccess(user, entryId);
   if (entry.entry_type === 'credential' || entry.entry_type === 'secret_key') {
     requireSecretAccess(user);
@@ -159,7 +160,7 @@ export async function updateEntry(user: AuthenticatedUser, entryId: number, body
   const markdownContent = input.markdown_content === undefined ? (entry.markdown_content as string) ?? null : optionalText(input.markdown_content);
   const externalUrl = input.external_url === undefined ? (entry.external_url as string) ?? null : optionalText(input.external_url);
   const secretValue = input.secret_value === undefined ? undefined : requiredText(input.secret_value, 'secret_value');
-  const previousProjectId = entry.project_id ? Number(entry.project_id) : null;
+  const previousProjectId = entry.project_id ? String(entry.project_id) : null;
   const projectId = input.project_id === undefined ? previousProjectId : optionalIdentifier(input.project_id);
   if (entry.entry_type === 'external_link' && externalUrl) validateUrlHttps(externalUrl, 'external_url');
   if (projectId) await requireProjectAccess(user, projectId);
@@ -194,14 +195,14 @@ export async function updateEntry(user: AuthenticatedUser, entryId: number, body
   return getEntry(user, entryId);
 }
 
-export async function archiveEntry(user: AuthenticatedUser, entryId: number): Promise<void> {
+export async function archiveEntry(user: AuthenticatedUser, entryId: string): Promise<void> {
   await requireVaultAccess(user, entryId);
   requireAdmin(user);
   await archiveVaultEntry(entryId);
   await recordAudit(entryId, user.id, 'archived');
 }
 
-export async function deleteEntry(user: AuthenticatedUser, entryId: number): Promise<void> {
+export async function deleteEntry(user: AuthenticatedUser, entryId: string): Promise<void> {
   await requireVaultAccess(user, entryId);
   requireAdmin(user);
   const client = await pool.connect();
@@ -218,17 +219,17 @@ export async function deleteEntry(user: AuthenticatedUser, entryId: number): Pro
   }
 }
 
-export async function getEntryTags(user: AuthenticatedUser, entryId: number) {
+export async function getEntryTags(user: AuthenticatedUser, entryId: string) {
   await requireVaultAccess(user, entryId);
   return listVaultEntryTags(entryId);
 }
 
-export async function setEntryTags(user: AuthenticatedUser, entryId: number, body: unknown) {
+export async function setEntryTags(user: AuthenticatedUser, entryId: string, body: unknown) {
   const entry = await requireVaultAccess(user, entryId);
   requireAdmin(user);
   const input = body as { tags?: unknown[] };
   if (!Array.isArray(input.tags)) throw new AppError(400, 'tags must be an array of strings.');
-  const tagIds: number[] = [];
+  const tagIds: string[] = [];
   for (const tagName of input.tags) {
     if (typeof tagName !== 'string' || !tagName.trim()) throw new AppError(400, 'Each tag must be a non-empty string.');
     const normalizedName = normalizeTagName(tagName);
@@ -237,14 +238,14 @@ export async function setEntryTags(user: AuthenticatedUser, entryId: number, bod
       const tagId = await createVaultTag(tagName.trim(), normalizedName);
       tag = { id: tagId, name_normalized: normalizedName, display_name: tagName.trim() };
     }
-    tagIds.push(Number(tag.id));
+    tagIds.push(String(tag.id));
   }
   await setVaultEntryTags(entryId, tagIds);
   await recordAudit(entryId, user.id, 'tags_updated');
   return listVaultEntryTags(entryId);
 }
 
-export async function revealSecret(user: AuthenticatedUser, entryId: number) {
+export async function revealSecret(user: AuthenticatedUser, entryId: string) {
   requireSecretAccess(user);
   const entry = await requireVaultAccess(user, entryId);
   if (entry.entry_type !== 'credential' && entry.entry_type !== 'secret_key') {
@@ -270,7 +271,7 @@ export async function revealSecret(user: AuthenticatedUser, entryId: number) {
   return { value: decrypted };
 }
 
-export async function storeSecret(user: AuthenticatedUser, entryId: number, plaintext: string): Promise<void> {
+export async function storeSecret(user: AuthenticatedUser, entryId: string, plaintext: string): Promise<void> {
   requireSecretAccess(user);
   const entry = await requireVaultAccess(user, entryId);
   if (entry.entry_type !== 'credential' && entry.entry_type !== 'secret_key') {

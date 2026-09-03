@@ -11,6 +11,23 @@ const VALID_PROJECT_ROLES = new Set(['member', 'project_lead']);
 const VALID_AVAILABILITY_STATUSES = new Set(['available', 'unavailable', 'reduced_capacity']);
 const KNOWN_USER_IDS = new Set([1, 2, 3, 4, 5]);
 
+const uuidByKey = new Map();
+
+async function hashPassword(plaintext) {
+  try {
+    const argon2 = require('argon2');
+    return await argon2.hash(plaintext, { type: argon2.argon2id });
+  } catch {
+    return null;
+  }
+}
+
+function resolvedUserId(numericId) {
+  const uuid = uuidByKey.get(Number(numericId));
+  if (!uuid) throw new Error(`Seed references unknown user id ${numericId}.`);
+  return uuid;
+}
+
 function assertEnum(set, value, label) {
   if (!set.has(value)) throw new Error(`Invalid ${label}: ${value}`);
 }
@@ -114,31 +131,36 @@ async function seedPostgres(data) {
     budgetLines: 0, spendRecords: 0, risks: 0, issues: 0, allocations: 0,
     assetsCreated: 0, assetAllocations: 0, capacityProfiles: 0, availability: 0,
   };
-  const creatorUserId = Number(data.creatorUserId);
+  let creatorUserId;
+  const seedPassword = process.env.SEED_USER_PASSWORD;
   await client.connect();
 
   const seedUsers = async () => {
     const team = [
-      { id: 1, name: 'Abdulsalam', email: 'abdulsalam@sindyan.team', role: 'admin' },
-      { id: 2, name: 'Ayesha', email: 'ayesha@sindyan.team', role: 'admin' },
-      { id: 3, name: 'Bilal', email: 'bilal@sindyan.team', role: 'team_member' },
-      { id: 4, name: 'Fatima', email: 'fatima@sindyan.team', role: 'team_member' },
+      { key: 1, name: 'Abdulsalam', email: 'abdulsalam@sindyan.team', role: 'admin' },
+      { key: 2, name: 'Ayesha', email: 'ayesha@sindyan.team', role: 'admin' },
+      { key: 3, name: 'Bilal', email: 'bilal@sindyan.team', role: 'team_member' },
+      { key: 4, name: 'Fatima', email: 'fatima@sindyan.team', role: 'team_member' },
     ];
+    const passwordHash = seedPassword ? await hashPassword(seedPassword) : null;
     for (const user of team) {
-      await client.query(
-        `INSERT INTO users (id, name, email_normalized, email_display, role, status)
-         VALUES ($1, $2, LOWER($3), $3, $4, 'active')
-         ON CONFLICT (id) DO UPDATE SET
+      const result = await client.query(
+        `INSERT INTO users (name, email_normalized, email_display, password_hash, role, status)
+         VALUES ($1, LOWER($2), $2, $3, $4, 'active')
+         ON CONFLICT (email_normalized) DO UPDATE SET
            name = EXCLUDED.name,
-           email_normalized = EXCLUDED.email_normalized,
            email_display = EXCLUDED.email_display,
+           password_hash = COALESCE(EXCLUDED.password_hash, users.password_hash),
            role = EXCLUDED.role,
            status = 'active',
-           updated_at = NOW()`,
-        [user.id, user.name, user.email, user.role],
+           updated_at = NOW()
+         RETURNING id`,
+        [user.name, user.email, passwordHash, user.role],
       );
+      uuidByKey.set(user.key, result.rows[0].id);
       stats.users += 1;
     }
+    creatorUserId = resolvedUserId(data.creatorUserId);
   };
 
   const clearProjectChildren = async (projectId) => {
@@ -185,7 +207,8 @@ async function seedPostgres(data) {
             budget_allocated_amount = $9, budget_currency = $10, updated_at = CURRENT_TIMESTAMP
           WHERE id = $11
         `, [
-          project.description?.trim() || null, project.owner?.trim() || null, project.ownerUserId ?? null,
+          project.description?.trim() || null, project.owner?.trim() || null,
+          project.ownerUserId != null ? resolvedUserId(project.ownerUserId) : null,
           project.status, project.priority, project.startDate || null, project.deadline || null,
           project.websiteUrl || null, project.budgetAmount ?? null, project.budgetCurrency || null, projectId,
         ]);
@@ -198,7 +221,7 @@ async function seedPostgres(data) {
           RETURNING id
         `, [
           project.name.trim(), project.description?.trim() || null, project.owner?.trim() || null,
-          project.ownerUserId ?? null, project.status, project.priority, project.startDate || null,
+          project.ownerUserId != null ? resolvedUserId(project.ownerUserId) : null, project.status, project.priority, project.startDate || null,
           project.deadline || null, project.websiteUrl || null, project.budgetAmount ?? null,
           project.budgetCurrency || null,
         ]);
@@ -231,7 +254,7 @@ async function seedPostgres(data) {
           INSERT INTO project_memberships (project_id, user_id, project_role)
           VALUES ($1, $2, $3)
           ON CONFLICT(project_id, user_id) DO UPDATE SET project_role = excluded.project_role
-        `, [projectId, Number(member.userId), member.projectRole]);
+        `, [projectId, resolvedUserId(member.userId), member.projectRole]);
         stats.memberships += 1;
       }
 
@@ -241,7 +264,7 @@ async function seedPostgres(data) {
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         `, [
           projectId, milestoneIdByTitle.get(task.milestone?.toLowerCase()) ?? null,
-          task.assigneeUserId ? Number(task.assigneeUserId) : null,
+          task.assigneeUserId != null ? resolvedUserId(task.assigneeUserId) : null,
           task.title.trim(), task.description || null, task.owner || project.owner || data.taskOwner || null,
           task.status, task.priority, task.dueDate || null, task.estimatedHours ?? null,
           task.blocker_note || null,
@@ -279,7 +302,7 @@ async function seedPostgres(data) {
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         `, [
           projectId, risk.title, risk.description || null, risk.severity, risk.probability,
-          risk.ownerUserId != null ? Number(risk.ownerUserId) : null,
+          risk.ownerUserId != null ? resolvedUserId(risk.ownerUserId) : null,
           risk.dueDate || null, risk.status, risk.mitigationProgress ?? 0,
           risk.mitigationNote || null, creatorUserId,
         ]);
@@ -292,7 +315,7 @@ async function seedPostgres(data) {
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         `, [
           projectId, issue.title, issue.description || null, issue.priority,
-          issue.ownerUserId != null ? Number(issue.ownerUserId) : null,
+          issue.ownerUserId != null ? resolvedUserId(issue.ownerUserId) : null,
           issue.targetResolutionDate || null, issue.status, issue.resolutionProgress ?? 0,
           issue.resolutionNote || null, creatorUserId,
         ]);
@@ -300,7 +323,7 @@ async function seedPostgres(data) {
       }
     }
 
-    await seedResources(client, data, stats);
+    await seedResources(client, data, stats, creatorUserId);
 
     await client.query('COMMIT');
     return stats;
@@ -312,8 +335,7 @@ async function seedPostgres(data) {
   }
 }
 
-async function seedResources(client, data, stats) {
-  const creatorUserId = Number(data.creatorUserId);
+async function seedResources(client, data, stats, creatorUserId) {
   const assets = [
     { name: 'Production Web Server', assetType: 'server', status: 'available', capacityDescription: '2 vCPU / 8GB RAM, hosts client-facing web apps.' },
     { name: 'Shared Drive Storage', assetType: 'storage', status: 'available', capacityDescription: '5TB object storage for project files and backups.' },
@@ -355,7 +377,7 @@ async function seedResources(client, data, stats) {
       INSERT INTO member_capacity_profiles (user_id, effective_from, weekly_capacity_hours, created_by_user_id)
       VALUES ($1, $2, $3, $4)
       ON CONFLICT (user_id, effective_from) DO UPDATE SET weekly_capacity_hours = excluded.weekly_capacity_hours
-    `, [Number(profile.userId), '2026-01-01', profile.weeklyHours, creatorUserId]);
+    `, [resolvedUserId(profile.userId), '2026-01-01', profile.weeklyHours, creatorUserId]);
     stats.capacityProfiles += 1;
   }
 
@@ -368,7 +390,7 @@ async function seedResources(client, data, stats) {
     await client.query(`
       INSERT INTO member_availability (user_id, starts_on, ends_on, capacity_hours, availability_status, note, created_by_user_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [Number(entry.userId), entry.startsOn, entry.endsOn, entry.hours, entry.status, entry.note, creatorUserId]);
+    `, [resolvedUserId(entry.userId), entry.startsOn, entry.endsOn, entry.hours, entry.status, entry.note, creatorUserId]);
     stats.availability += 1;
   }
 
@@ -383,7 +405,7 @@ async function seedResources(client, data, stats) {
       await client.query(`
         INSERT INTO project_member_allocations (project_id, user_id, starts_on, ends_on, allocation_percent, planned_hours)
         VALUES ($1, $2, $3, $4, $5, $6)
-      `, [projectResult.rows[0].id, Number(member.userId), start, end, 40, 8]);
+      `, [projectResult.rows[0].id, resolvedUserId(member.userId), start, end, 40, 8]);
       allocationCount += 1;
     }
   }

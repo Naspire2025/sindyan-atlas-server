@@ -3,7 +3,7 @@ import type { SessionIdentity } from '../../types/auth';
 
 type SessionRow = SessionIdentity;
 
-export async function revokeActiveSessionsForUser(userId: number): Promise<void> {
+export async function revokeActiveSessionsForUser(userId: string): Promise<void> {
   await pool.query(`
     UPDATE sessions
     SET revoked_at = NOW()
@@ -12,17 +12,17 @@ export async function revokeActiveSessionsForUser(userId: number): Promise<void>
 }
 
 export async function createSession(input: {
-  userId: number;
+  userId: string;
   tokenHash: string;
   expiresAt: string;
   absoluteExpiresAt: string;
-}): Promise<number> {
+}): Promise<string> {
   const result = await pool.query(`
     INSERT INTO sessions (user_id, token_hash, expires_at, absolute_expires_at)
     VALUES ($1, $2, $3, $4)
     RETURNING id
   `, [input.userId, input.tokenHash, input.expiresAt, input.absoluteExpiresAt]);
-  return Number(result.rows[0].id);
+  return result.rows[0].id as string;
 }
 
 export async function findSessionIdentity(tokenHash: string): Promise<SessionRow | undefined> {
@@ -42,7 +42,7 @@ export async function findSessionIdentity(tokenHash: string): Promise<SessionRow
   return result.rows[0] as SessionRow | undefined;
 }
 
-export async function touchSession(sessionId: number, expiresAt: string): Promise<void> {
+export async function touchSession(sessionId: string, expiresAt: string): Promise<void> {
   await pool.query(`
     UPDATE sessions
     SET last_seen_at = NOW(), expires_at = $1
@@ -50,7 +50,7 @@ export async function touchSession(sessionId: number, expiresAt: string): Promis
   `, [expiresAt, sessionId]);
 }
 
-export async function revokeSession(sessionId: number): Promise<void> {
+export async function revokeSession(sessionId: string): Promise<void> {
   await pool.query("UPDATE sessions SET revoked_at = NOW() WHERE id = $1", [sessionId]);
 }
 

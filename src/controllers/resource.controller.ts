@@ -22,9 +22,9 @@ import {
   updateCapacityProfileRecord,
   updateMemberAllocationRecord,
 } from '../services/resource.service';
-import { parsePositiveId, requireUser } from '../utils/request.util';
+import { parseUuid, requireUser } from '../utils/request.util';
 
-function userId(request: Request): number { return parsePositiveId(request.params.userId); }
+function userId(request: Request): string { return parseUuid(request.params.userId); }
 
 export async function listCapacityProfilesController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try { response.json(await listUserCapacityProfiles(requireUser(request.user), userId(request))); } catch (error) { next(error); }
@@ -35,7 +35,7 @@ export async function createCapacityProfileController(request: Request, response
 }
 
 export async function updateCapacityProfileController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { response.json(await updateCapacityProfileRecord(requireUser(request.user), parsePositiveId(request.params.profileId), request.body)); } catch (error) { next(error); }
+  try { response.json(await updateCapacityProfileRecord(requireUser(request.user), parseUuid(request.params.profileId), request.body)); } catch (error) { next(error); }
 }
 
 export async function listAvailabilityController(request: Request, response: Response, next: NextFunction): Promise<void> {
@@ -47,11 +47,11 @@ export async function createAvailabilityController(request: Request, response: R
 }
 
 export async function updateAvailabilityController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { response.json(await updateAvailabilityRecord(requireUser(request.user), parsePositiveId(request.params.availabilityId), request.body)); } catch (error) { next(error); }
+  try { response.json(await updateAvailabilityRecord(requireUser(request.user), parseUuid(request.params.availabilityId), request.body)); } catch (error) { next(error); }
 }
 
 export async function deleteAvailabilityController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { await deleteAvailabilityRecord(requireUser(request.user), parsePositiveId(request.params.availabilityId)); response.status(204).send(); } catch (error) { next(error); }
+  try { await deleteAvailabilityRecord(requireUser(request.user), parseUuid(request.params.availabilityId)); response.status(204).send(); } catch (error) { next(error); }
 }
 
 export async function listMemberAllocationsController(request: Request, response: Response, next: NextFunction): Promise<void> {
@@ -63,11 +63,11 @@ export async function createMemberAllocationController(request: Request, respons
 }
 
 export async function updateMemberAllocationController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { response.json(await updateMemberAllocationRecord(requireUser(request.user), parsePositiveId(request.params.allocationId), request.body)); } catch (error) { next(error); }
+  try { response.json(await updateMemberAllocationRecord(requireUser(request.user), parseUuid(request.params.allocationId), request.body)); } catch (error) { next(error); }
 }
 
 export async function deleteMemberAllocationController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { await deleteMemberAllocationRecord(requireUser(request.user), parsePositiveId(request.params.allocationId)); response.status(204).send(); } catch (error) { next(error); }
+  try { await deleteMemberAllocationRecord(requireUser(request.user), parseUuid(request.params.allocationId)); response.status(204).send(); } catch (error) { next(error); }
 }
 
 export async function listAssetsController(request: Request, response: Response, next: NextFunction): Promise<void> {
@@ -86,11 +86,11 @@ export async function getAssetController(request: Request, response: Response, n
 }
 
 export async function updateAssetController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { response.json(await updateAssetRecord(requireUser(request.user), parsePositiveId(request.params.assetId), request.body)); } catch (error) { next(error); }
+  try { response.json(await updateAssetRecord(requireUser(request.user), parseUuid(request.params.assetId), request.body)); } catch (error) { next(error); }
 }
 
 export async function deleteAssetController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { await deleteAssetRecord(requireUser(request.user), parsePositiveId(request.params.assetId)); response.status(204).send(); } catch (error) { next(error); }
+  try { await deleteAssetRecord(requireUser(request.user), parseUuid(request.params.assetId)); response.status(204).send(); } catch (error) { next(error); }
 }
 
 export async function listAssetAllocationsController(request: Request, response: Response, next: NextFunction): Promise<void> {
@@ -102,11 +102,11 @@ export async function createAssetAllocationController(request: Request, response
 }
 
 export async function updateAssetAllocationController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { response.json(await updateAssetAllocationRecord(requireUser(request.user), parsePositiveId(request.params.allocationId), request.body)); } catch (error) { next(error); }
+  try { response.json(await updateAssetAllocationRecord(requireUser(request.user), parseUuid(request.params.allocationId), request.body)); } catch (error) { next(error); }
 }
 
 export async function deleteAssetAllocationController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { await deleteAssetAllocationRecord(requireUser(request.user), parsePositiveId(request.params.allocationId)); response.status(204).send(); } catch (error) { next(error); }
+  try { await deleteAssetAllocationRecord(requireUser(request.user), parseUuid(request.params.allocationId)); response.status(204).send(); } catch (error) { next(error); }
 }
 
 export async function workloadController(request: Request, response: Response, next: NextFunction): Promise<void> {
@@ -114,5 +114,5 @@ export async function workloadController(request: Request, response: Response, n
 }
 
 export async function projectAllocationsController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { response.json(await getProjectAllocationView(requireUser(request.user), parsePositiveId(request.params.projectId))); } catch (error) { next(error); }
+  try { response.json(await getProjectAllocationView(requireUser(request.user), parseUuid(request.params.projectId))); } catch (error) { next(error); }
 }

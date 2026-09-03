@@ -57,9 +57,9 @@ test('migrations create the access-control, vault, and single-session foundation
 
   const phase = await createProjectPhase(lead, project.id, { name: 'Delivery', position: 0, start_date: '2026-01-01', end_date: '2026-01-31' });
   const milestone = await createProjectMilestone(lead, project.id, { title: 'First release', phase_id: phase.id, target_date: '2026-01-31' });
-  assert.equal((await updateMilestone(lead, milestone.id as number, { status: 'in_progress' })).status, 'in_progress');
-  await assert.rejects(deleteMilestone(lead, milestone.id as number), { message: 'Administrator access is required.' });
-  await deleteMilestone(admin, milestone.id as number);
+  assert.equal((await updateMilestone(lead, milestone.id as string, { status: 'in_progress' })).status, 'in_progress');
+  await assert.rejects(deleteMilestone(lead, milestone.id as string), { message: 'Administrator access is required.' });
+  await deleteMilestone(admin, milestone.id as string);
   await createProjectLink(lead, project.id, { label: 'Project brief', link_type: 'brief', url: 'https://example.test/brief', position: 0 });
   assert.equal((await listProjectLinks(member, project.id)).length, 1);
   await assert.rejects(createProjectLink(member, project.id, { label: 'Denied', link_type: 'brief', url: 'https://example.test/denied' }), { message: 'Project lead access is required.' });

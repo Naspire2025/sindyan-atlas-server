@@ -39,24 +39,24 @@ function optionalText(value: unknown): string | null {
   return value.trim() || null;
 }
 
-async function requireExistingProject(projectId: number): Promise<void> {
+async function requireExistingProject(projectId: string): Promise<void> {
   if (!(await findProject(projectId))) throw new AppError(404, 'Project unavailable.');
 }
 
-async function requireProjectCurrency(projectId: number, currency: string): Promise<void> {
+async function requireProjectCurrency(projectId: string, currency: string): Promise<void> {
   const project = await findProject(projectId) as { budget_currency?: string | null } | undefined;
   if (project?.budget_currency && project.budget_currency !== currency) {
     throw new AppError(400, `currency must match the project currency (${project.budget_currency}).`);
   }
 }
 
-export async function listBudgetLines(user: AuthenticatedUser, projectId: number) {
+export async function listBudgetLines(user: AuthenticatedUser, projectId: string) {
   requireAdmin(user);
   await requireExistingProject(projectId);
   return listBudgetLinesForProject(projectId);
 }
 
-export async function createBudgetLineRecord(user: AuthenticatedUser, projectId: number, body: unknown) {
+export async function createBudgetLineRecord(user: AuthenticatedUser, projectId: string, body: unknown) {
   requireAdmin(user);
   await requireExistingProject(projectId);
   const input = body as Record<string, unknown>;
@@ -79,7 +79,7 @@ export async function createBudgetLineRecord(user: AuthenticatedUser, projectId:
   return findBudgetLine(budgetLineId);
 }
 
-export async function updateBudgetLineRecord(user: AuthenticatedUser, budgetLineId: number, body: unknown) {
+export async function updateBudgetLineRecord(user: AuthenticatedUser, budgetLineId: string, body: unknown) {
   requireAdmin(user);
   const existing = await findBudgetLine(budgetLineId);
   if (!existing) throw new AppError(404, 'Budget line unavailable.');
@@ -95,20 +95,20 @@ export async function updateBudgetLineRecord(user: AuthenticatedUser, budgetLine
   return findBudgetLine(budgetLineId);
 }
 
-export async function deleteBudgetLineRecord(user: AuthenticatedUser, budgetLineId: number): Promise<void> {
+export async function deleteBudgetLineRecord(user: AuthenticatedUser, budgetLineId: string): Promise<void> {
   requireAdmin(user);
   const existing = await findBudgetLine(budgetLineId);
   if (!existing) throw new AppError(404, 'Budget line unavailable.');
   await deleteBudgetLine(budgetLineId);
 }
 
-export async function listSpendRecords(user: AuthenticatedUser, projectId: number) {
+export async function listSpendRecords(user: AuthenticatedUser, projectId: string) {
   requireAdmin(user);
   await requireExistingProject(projectId);
   return listSpendRecordsForProject(projectId);
 }
 
-export async function createSpendRecordRecord(user: AuthenticatedUser, projectId: number, body: unknown) {
+export async function createSpendRecordRecord(user: AuthenticatedUser, projectId: string, body: unknown) {
   requireAdmin(user);
   await requireExistingProject(projectId);
   const input = body as Record<string, unknown>;
@@ -131,7 +131,7 @@ export async function createSpendRecordRecord(user: AuthenticatedUser, projectId
   return findSpendRecord(spendRecordId);
 }
 
-export async function updateSpendRecordRecord(user: AuthenticatedUser, spendRecordId: number, body: unknown) {
+export async function updateSpendRecordRecord(user: AuthenticatedUser, spendRecordId: string, body: unknown) {
   requireAdmin(user);
   const existing = await findSpendRecord(spendRecordId);
   if (!existing) throw new AppError(404, 'Spend record unavailable.');
@@ -147,14 +147,14 @@ export async function updateSpendRecordRecord(user: AuthenticatedUser, spendReco
   return findSpendRecord(spendRecordId);
 }
 
-export async function deleteSpendRecordRecord(user: AuthenticatedUser, spendRecordId: number): Promise<void> {
+export async function deleteSpendRecordRecord(user: AuthenticatedUser, spendRecordId: string): Promise<void> {
   requireAdmin(user);
   const existing = await findSpendRecord(spendRecordId);
   if (!existing) throw new AppError(404, 'Spend record unavailable.');
   await deleteSpendRecord(spendRecordId);
 }
 
-export async function getFinancialSummary(user: AuthenticatedUser, projectId: number) {
+export async function getFinancialSummary(user: AuthenticatedUser, projectId: string) {
   requireAdmin(user);
   await requireExistingProject(projectId);
   return computeFinancialSummary(projectId);

@@ -3,15 +3,16 @@ import { findTask, type TaskRow } from '../db/repositories/task.repository';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { isIsoDate } from '../utils/date.util';
+import { isUuid } from '../utils/request.util';
 import { requireAdmin, requireProjectAccess, requireProjectLead } from './project-access.service';
 
 const TASK_STATUSES = new Set(['todo', 'in_progress', 'blocked', 'reviewing', 'reviewed', 'done']);
 const TASK_PRIORITIES = new Set(['low', 'medium', 'high', 'critical']);
 
 type CreateTaskInput = {
-  projectId: number;
-  milestoneId: number | null;
-  assigneeUserId: number | null;
+  projectId: string;
+  milestoneId: string | null;
+  assigneeUserId: string | null;
   title: string;
   description: string | null;
   priority: string;
@@ -45,9 +46,9 @@ function optionalNumber(value: unknown): number | null {
   return value;
 }
 
-function optionalIdentifier(value: unknown): number | null {
+function optionalIdentifier(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
-  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) throw new AppError(400, 'Invalid identifier.');
+  if (!isUuid(value)) throw new AppError(400, 'Invalid identifier.');
   return value;
 }
 
@@ -57,13 +58,13 @@ function validatePriority(value: unknown): string {
   return priority;
 }
 
-async function validateMilestone(projectId: number, milestoneId: number | null): Promise<void> {
+async function validateMilestone(projectId: string, milestoneId: string | null): Promise<void> {
   if (!milestoneId) return;
   const result = await pool.query('SELECT id FROM milestones WHERE id = $1 AND project_id = $2', [milestoneId, projectId]);
   if (!result.rows[0]) throw new AppError(400, 'The milestone must belong to the task project.');
 }
 
-async function validateAssignee(projectId: number, assigneeUserId: number | null): Promise<void> {
+async function validateAssignee(projectId: string, assigneeUserId: string | null): Promise<void> {
   if (!assigneeUserId) return;
   const result = await pool.query(`
     SELECT 1
@@ -161,7 +162,7 @@ export async function createTask(user: AuthenticatedUser, body: unknown): Promis
   await validateMilestone(input.projectId, input.milestoneId);
   await validateAssignee(input.projectId, input.assigneeUserId);
 
-  let taskId: number;
+  let taskId: string;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -170,7 +171,7 @@ export async function createTask(user: AuthenticatedUser, body: unknown): Promis
       VALUES ($1, $2, $3, $4, $5, 'todo', $6, $7, $8, $9)
       RETURNING id
     `, [input.projectId, input.milestoneId, input.assigneeUserId, input.title, input.description, input.priority, input.dueDate, input.estimatedHours, input.blockerNote]);
-    taskId = result.rows[0].id as number;
+    taskId = result.rows[0].id as string;
     await client.query(`
       INSERT INTO task_activity (task_id, actor_user_id, event_type, previous_value, new_value)
       VALUES ($1, $2, $3, $4, $5)
@@ -188,7 +189,7 @@ export async function createTask(user: AuthenticatedUser, body: unknown): Promis
   return task;
 }
 
-export async function updateTask(user: AuthenticatedUser, taskId: number, body: unknown): Promise<TaskRow> {
+export async function updateTask(user: AuthenticatedUser, taskId: string, body: unknown): Promise<TaskRow> {
   const task = await findTask(taskId);
   if (!task) throw new AppError(404, 'Task unavailable.');
   const updates = parseTaskUpdateInput(body);
@@ -241,14 +242,14 @@ export async function updateTask(user: AuthenticatedUser, taskId: number, body: 
   return updatedTask;
 }
 
-export async function deleteTask(user: AuthenticatedUser, taskId: number): Promise<void> {
+export async function deleteTask(user: AuthenticatedUser, taskId: string): Promise<void> {
   requireAdmin(user);
   const task = await findTask(taskId);
   if (!task) throw new AppError(404, 'Task unavailable.');
   await pool.query('DELETE FROM tasks WHERE id = $1', [taskId]);
 }
 
-export async function addTaskComment(user: AuthenticatedUser, taskId: number, body: unknown): Promise<Record<string, unknown>> {
+export async function addTaskComment(user: AuthenticatedUser, taskId: string, body: unknown): Promise<Record<string, unknown>> {
   const task = await findTask(taskId);
   if (!task) throw new AppError(404, 'Task unavailable.');
   await requireProjectAccess(user, task.project_id);
@@ -256,7 +257,7 @@ export async function addTaskComment(user: AuthenticatedUser, taskId: number, bo
   if (commentBody.length > 2000) throw new AppError(400, 'Comment must be 2,000 characters or fewer.');
 
   const client = await pool.connect();
-  let commentId: number;
+  let commentId: string;
   try {
     await client.query('BEGIN');
     const result = await client.query(`
@@ -264,7 +265,7 @@ export async function addTaskComment(user: AuthenticatedUser, taskId: number, bo
       VALUES ($1, $2, $3)
       RETURNING id
     `, [taskId, user.id, commentBody]);
-    commentId = result.rows[0].id as number;
+    commentId = result.rows[0].id as string;
     await client.query(`
       INSERT INTO task_activity (task_id, actor_user_id, event_type, previous_value, new_value)
       VALUES ($1, $2, $3, $4, $5)
