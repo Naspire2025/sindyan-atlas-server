@@ -74,7 +74,15 @@ export async function deleteAvailability(availabilityId: string): Promise<void> 
 }
 
 export async function findMemberAllocation(allocationId: string): Promise<MemberAllocationRow | undefined> {
-  const result = await pool.query('SELECT * FROM project_member_allocations WHERE id = $1', [allocationId]);
+  const result = await pool.query(
+    `SELECT pma.*, pma.allocation_percent AS allocation_percentage, pma.allocation_percent AS percentage,
+            u.name AS user_name, u.email_display AS user_email, p.name AS project_name
+     FROM project_member_allocations pma
+     LEFT JOIN users u ON u.id = pma.user_id
+     LEFT JOIN projects p ON p.id = pma.project_id
+     WHERE pma.id = $1`,
+    [allocationId],
+  );
   return result.rows[0] as MemberAllocationRow | undefined;
 }
 
@@ -82,11 +90,17 @@ export async function listMemberAllocations(filters: { projectId?: string; userI
   const conditions: string[] = [];
   const parameters: unknown[] = [];
   let paramIndex = 1;
-  if (filters.projectId) { conditions.push(`project_id = $${paramIndex++}`); parameters.push(filters.projectId); }
-  if (filters.userId) { conditions.push(`user_id = $${paramIndex++}`); parameters.push(filters.userId); }
+  if (filters.projectId) { conditions.push(`pma.project_id = $${paramIndex++}`); parameters.push(filters.projectId); }
+  if (filters.userId) { conditions.push(`pma.user_id = $${paramIndex++}`); parameters.push(filters.userId); }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const result = await pool.query(
-    `SELECT * FROM project_member_allocations ${where} ORDER BY starts_on ASC, id ASC`,
+    `SELECT pma.*, pma.allocation_percent AS allocation_percentage, pma.allocation_percent AS percentage,
+            u.name AS user_name, u.email_display AS user_email, p.name AS project_name
+     FROM project_member_allocations pma
+     LEFT JOIN users u ON u.id = pma.user_id
+     LEFT JOIN projects p ON p.id = pma.project_id
+     ${where}
+     ORDER BY pma.starts_on ASC, pma.id ASC`,
     parameters,
   );
   return result.rows as MemberAllocationRow[];
@@ -149,7 +163,15 @@ export async function deleteAsset(assetId: string): Promise<void> {
 }
 
 export async function findAssetAllocation(allocationId: string): Promise<AssetAllocationRow | undefined> {
-  const result = await pool.query('SELECT * FROM asset_allocations WHERE id = $1', [allocationId]);
+  const result = await pool.query(
+    `SELECT aa.*, aa.allocation_percent AS allocation_percentage, aa.allocation_percent AS percentage,
+            a.name AS asset_name, p.name AS project_name
+     FROM asset_allocations aa
+     LEFT JOIN assets a ON a.id = aa.asset_id
+     LEFT JOIN projects p ON p.id = aa.project_id
+     WHERE aa.id = $1`,
+    [allocationId],
+  );
   return result.rows[0] as AssetAllocationRow | undefined;
 }
 
@@ -157,11 +179,17 @@ export async function listAssetAllocations(filters: { assetId?: string; projectI
   const conditions: string[] = [];
   const parameters: unknown[] = [];
   let paramIndex = 1;
-  if (filters.assetId) { conditions.push(`asset_id = $${paramIndex++}`); parameters.push(filters.assetId); }
-  if (filters.projectId) { conditions.push(`project_id = $${paramIndex++}`); parameters.push(filters.projectId); }
+  if (filters.assetId) { conditions.push(`aa.asset_id = $${paramIndex++}`); parameters.push(filters.assetId); }
+  if (filters.projectId) { conditions.push(`aa.project_id = $${paramIndex++}`); parameters.push(filters.projectId); }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const result = await pool.query(
-    `SELECT * FROM asset_allocations ${where} ORDER BY starts_on ASC, id ASC`,
+    `SELECT aa.*, aa.allocation_percent AS allocation_percentage, aa.allocation_percent AS percentage,
+            a.name AS asset_name, p.name AS project_name
+     FROM asset_allocations aa
+     LEFT JOIN assets a ON a.id = aa.asset_id
+     LEFT JOIN projects p ON p.id = aa.project_id
+     ${where}
+     ORDER BY aa.starts_on ASC, aa.id ASC`,
     parameters,
   );
   return result.rows as AssetAllocationRow[];
@@ -206,9 +234,11 @@ export async function fetchWorkloadSummary(): Promise<Array<Record<string, unkno
 
 export async function fetchProjectAllocations(projectId: string): Promise<Array<Record<string, unknown>>> {
   const result = await pool.query(
-    `SELECT pa.*, u.name AS user_name
+    `SELECT pa.*, pa.allocation_percent AS allocation_percentage, pa.allocation_percent AS percentage,
+            u.name AS user_name, u.email_display AS user_email, p.name AS project_name
      FROM project_member_allocations pa
-     JOIN users u ON u.id = pa.user_id
+     LEFT JOIN users u ON u.id = pa.user_id
+     LEFT JOIN projects p ON p.id = pa.project_id
      WHERE pa.project_id = $1
      ORDER BY pa.starts_on ASC, pa.id ASC`,
     [projectId],

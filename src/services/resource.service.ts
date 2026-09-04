@@ -191,17 +191,28 @@ export async function listMemberAllocationRecords(user: AuthenticatedUser, query
 export async function createMemberAllocationRecord(user: AuthenticatedUser, body: unknown) {
   requireAdmin(user);
   const input = body as Record<string, unknown>;
-  const projectId = requiredIdentifier(input.project_id, 'project_id');
-  const userId = requiredIdentifier(input.user_id, 'user_id');
+  const projectId = requiredIdentifier(input.project_id || input.projectId, 'project_id');
+  const userId = requiredIdentifier(input.user_id || input.userId, 'user_id');
   const projectResult = await pool.query('SELECT id FROM projects WHERE id = $1', [projectId]);
   if (!projectResult.rows[0]) throw new AppError(404, 'Project unavailable.');
   await requireExistingUser(userId);
-  if (!await isProjectMember(userId, projectId)) throw new AppError(400, 'User must be a member of the project.');
-  const startsOn = requiredDate(input.starts_on, 'starts_on');
-  const endsOn = requiredDate(input.ends_on, 'ends_on');
+  if (!(await isProjectMember(userId, projectId))) {
+    await pool.query(
+      `INSERT INTO project_memberships (project_id, user_id, project_role) VALUES ($1, $2, 'member') ON CONFLICT DO NOTHING`,
+      [projectId, userId],
+    );
+  }
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const next90DaysStr = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
+  const rawStartsOn = input.starts_on || input.startsOn;
+  const rawEndsOn = input.ends_on || input.endsOn;
+  const startsOn = rawStartsOn ? requiredDate(rawStartsOn, 'starts_on') : todayStr;
+  const endsOn = rawEndsOn ? requiredDate(rawEndsOn, 'ends_on') : next90DaysStr;
   if (endsOn < startsOn) throw new AppError(400, 'ends_on must not be before starts_on.');
-  const allocationPercent = requiredPercent(input.allocation_percent, 'allocation_percent');
-  const plannedHours = input.planned_hours === undefined ? null : requiredNumber(input.planned_hours, 'planned_hours');
+  const rawPercent = input.allocation_percent ?? input.allocation_percentage ?? input.percentage;
+  const allocationPercent = requiredPercent(rawPercent, 'allocation_percent');
+  const rawHours = input.planned_hours ?? input.plannedHours;
+  const plannedHours = rawHours === undefined || rawHours === null || rawHours === '' ? null : requiredNumber(rawHours, 'planned_hours');
 
   await checkAllocationOverlap(projectId, userId, startsOn, endsOn, allocationPercent);
   const allocationId = await createMemberAllocation({ projectId, userId, startsOn, endsOn, allocationPercent, plannedHours });
@@ -213,11 +224,15 @@ export async function updateMemberAllocationRecord(user: AuthenticatedUser, allo
   const existing = await findMemberAllocation(allocationId);
   if (!existing) throw new AppError(404, 'Member allocation unavailable.');
   const input = body as Record<string, unknown>;
-  const startsOn = input.starts_on === undefined ? String(existing.starts_on) : requiredDate(input.starts_on, 'starts_on');
-  const endsOn = input.ends_on === undefined ? String(existing.ends_on) : requiredDate(input.ends_on, 'ends_on');
+  const rawStartsOn = input.starts_on || input.startsOn;
+  const rawEndsOn = input.ends_on || input.endsOn;
+  const startsOn = rawStartsOn === undefined ? String(existing.starts_on) : requiredDate(rawStartsOn, 'starts_on');
+  const endsOn = rawEndsOn === undefined ? String(existing.ends_on) : requiredDate(rawEndsOn, 'ends_on');
   if (endsOn < startsOn) throw new AppError(400, 'ends_on must not be before starts_on.');
-  const allocationPercent = input.allocation_percent === undefined ? Number(existing.allocation_percent) : requiredPercent(input.allocation_percent, 'allocation_percent');
-  const plannedHours = input.planned_hours === undefined ? existing.planned_hours ?? null : requiredNumber(input.planned_hours, 'planned_hours');
+  const rawPercent = input.allocation_percent ?? input.allocation_percentage ?? input.percentage;
+  const allocationPercent = rawPercent === undefined ? Number(existing.allocation_percent) : requiredPercent(rawPercent, 'allocation_percent');
+  const rawHours = input.planned_hours ?? input.plannedHours;
+  const plannedHours = rawHours === undefined ? existing.planned_hours ?? null : (rawHours === null || rawHours === '' ? null : requiredNumber(rawHours, 'planned_hours'));
 
   await checkAllocationOverlap(String(existing.project_id), String(existing.user_id), startsOn, endsOn, allocationPercent, allocationId);
   await updateMemberAllocation(allocationId, { startsOn, endsOn, allocationPercent, plannedHours });
@@ -286,8 +301,8 @@ export async function listAssetAllocationRecords(user: AuthenticatedUser, query:
 export async function createAssetAllocationRecord(user: AuthenticatedUser, body: unknown) {
   requireAdmin(user);
   const input = body as Record<string, unknown>;
-  const assetId = requiredIdentifier(input.asset_id, 'asset_id');
-  const projectId = requiredIdentifier(input.project_id, 'project_id');
+  const assetId = requiredIdentifier(input.asset_id || input.assetId, 'asset_id');
+  const projectId = requiredIdentifier(input.project_id || input.projectId, 'project_id');
   const asset = await findAsset(assetId);
   if (!asset) throw new AppError(404, 'Asset unavailable.');
   if (asset.status === 'retired' || asset.status === 'unavailable') {
@@ -295,10 +310,15 @@ export async function createAssetAllocationRecord(user: AuthenticatedUser, body:
   }
   const projectResult = await pool.query('SELECT id FROM projects WHERE id = $1', [projectId]);
   if (!projectResult.rows[0]) throw new AppError(404, 'Project unavailable.');
-  const startsOn = requiredDate(input.starts_on, 'starts_on');
-  const endsOn = requiredDate(input.ends_on, 'ends_on');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const next90DaysStr = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
+  const rawStartsOn = input.starts_on || input.startsOn;
+  const rawEndsOn = input.ends_on || input.endsOn;
+  const startsOn = rawStartsOn ? requiredDate(rawStartsOn, 'starts_on') : todayStr;
+  const endsOn = rawEndsOn ? requiredDate(rawEndsOn, 'ends_on') : next90DaysStr;
   if (endsOn < startsOn) throw new AppError(400, 'ends_on must not be before starts_on.');
-  const allocationPercent = requiredPercent(input.allocation_percent, 'allocation_percent');
+  const rawPercent = input.allocation_percent ?? input.allocation_percentage ?? input.percentage;
+  const allocationPercent = requiredPercent(rawPercent, 'allocation_percent');
   const note = optionalText(input.note);
 
   await checkAssetOverlap(assetId, startsOn, endsOn, allocationPercent);
@@ -311,10 +331,13 @@ export async function updateAssetAllocationRecord(user: AuthenticatedUser, alloc
   const existing = await findAssetAllocation(allocationId);
   if (!existing) throw new AppError(404, 'Asset allocation unavailable.');
   const input = body as Record<string, unknown>;
-  const startsOn = input.starts_on === undefined ? String(existing.starts_on) : requiredDate(input.starts_on, 'starts_on');
-  const endsOn = input.ends_on === undefined ? String(existing.ends_on) : requiredDate(input.ends_on, 'ends_on');
+  const rawStartsOn = input.starts_on || input.startsOn;
+  const rawEndsOn = input.ends_on || input.endsOn;
+  const startsOn = rawStartsOn === undefined ? String(existing.starts_on) : requiredDate(rawStartsOn, 'starts_on');
+  const endsOn = rawEndsOn === undefined ? String(existing.ends_on) : requiredDate(rawEndsOn, 'ends_on');
   if (endsOn < startsOn) throw new AppError(400, 'ends_on must not be before starts_on.');
-  const allocationPercent = input.allocation_percent === undefined ? Number(existing.allocation_percent) : requiredPercent(input.allocation_percent, 'allocation_percent');
+  const rawPercent = input.allocation_percent ?? input.allocation_percentage ?? input.percentage;
+  const allocationPercent = rawPercent === undefined ? Number(existing.allocation_percent) : requiredPercent(rawPercent, 'allocation_percent');
   const note = input.note === undefined ? existing.note ?? null : optionalText(input.note);
 
   await checkAssetOverlap(String(existing.asset_id), startsOn, endsOn, allocationPercent, allocationId);
