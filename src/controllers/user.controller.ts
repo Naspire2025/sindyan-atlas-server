@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
-import { listInvitations } from '../db/repositories/invitation.repository';
 import { getMemberSummary, getOrganizationUser, listOrganizationUsers, updateOrganizationUser } from '../services/user.service';
+import { listInvitationSummaries } from '../services/auth.service';
 import { parseUuid, requireUser } from '../utils/request.util';
 
 export async function listUsersController(request: Request, response: Response, next: NextFunction): Promise<void> {
@@ -22,6 +22,6 @@ export async function updateUserController(request: Request, response: Response,
 export async function listInvitationsController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
     await listOrganizationUsers(requireUser(request.user));
-    response.json(await listInvitations());
+    response.json(await listInvitationSummaries());
   } catch (error) { next(error); }
 }

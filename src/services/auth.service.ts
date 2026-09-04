@@ -1,7 +1,7 @@
 import { pool } from '../db/connection';
 import { createSession, revokeActiveSessionsForUser } from '../db/repositories/session.repository';
 import { createUser, findActiveAdmin, findUserByEmail, activatePendingUser, updatePasswordHash } from '../db/repositories/user.repository';
-import { acceptInvitation, createInvitation, findInvitationById, findPendingInvitation, listInvitationAssignments, revokeInvitation } from '../db/repositories/invitation.repository';
+import { acceptInvitation, createInvitation, findInvitationById, findPendingInvitation, listInvitationAssignments, revokeInvitation, listInvitations } from '../db/repositories/invitation.repository';
 import type { AuthenticatedUser, OrganizationRole, ProjectRole } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { isUuid } from '../utils/request.util';
@@ -52,6 +52,40 @@ async function createSessionForUser(userId: string): Promise<NewSession> {
   }
 
   return { token, expiresAt };
+}
+
+type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
+
+function invitationStatus(row: {
+  accepted_at: string | null;
+  revoked_at: string | null;
+  expires_at: string;
+}): InvitationStatus {
+  if (row.revoked_at) return 'revoked';
+  if (row.accepted_at) return 'accepted';
+  if (Date.parse(row.expires_at) <= Date.now()) return 'expired';
+  return 'pending';
+}
+
+export async function listInvitationSummaries(): Promise<
+  Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    status: InvitationStatus;
+    created_at: string;
+  }>
+> {
+  const rows = await listInvitations();
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email_normalized,
+    role: row.role,
+    status: invitationStatus(row),
+    created_at: row.created_at,
+  }));
 }
 
 export async function bootstrapAdmin(): Promise<void> {
