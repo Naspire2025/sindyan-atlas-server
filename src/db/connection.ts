@@ -1,20 +1,11 @@
 import { Pool } from 'pg';
-
-const connectionConfig = process.env.DATABASE_URL
-  ? { connectionString: process.env.DATABASE_URL }
-  : {
-      host: process.env.PGHOST ?? '127.0.0.1',
-      port: Number(process.env.PGPORT ?? 5432),
-      database: process.env.PGDATABASE ?? 'atlas',
-      user: process.env.PGUSER ?? process.env.USER ?? 'mac',
-      password: process.env.PGPASSWORD ?? undefined,
-    };
+import { env } from '../config/env';
 
 export const pool = new Pool({
-  ...connectionConfig,
+  connectionString: env.databaseUrl,
   max: 20,
   idleTimeoutMillis: 30_000,
-  connectionTimeoutMillis: 5_000,
+  connectionTimeoutMillis: 15_000,
 });
 
 pool.on('error', (error) => {

@@ -1,5 +1,14 @@
 const DEFAULT_FRONTEND_ORIGIN = "http://localhost:5173";
 
+function readDatabaseUrl(): string {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl)
+    throw new Error(
+      "DATABASE_URL is required. Set it in .env (or the deployment environment).",
+    );
+  return databaseUrl;
+}
+
 function readPositiveInteger(name: string, fallback: number): number {
   const value = process.env[name];
   if (!value) return fallback;
@@ -59,6 +68,7 @@ const fileStorageEnabled = readBoolean(
 validateR2Configuration(fileStorageEnabled);
 
 export const env = {
+  databaseUrl: readDatabaseUrl(),
   host: process.env.HOST ?? "127.0.0.1",
   port: readPositiveInteger("PORT", 8080),
   isProduction: process.env.NODE_ENV === "production",

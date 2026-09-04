@@ -9,8 +9,8 @@
     "start": "node dist/server.js",
     "dev": "npm run build && node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test --test-concurrency=1 dist/db/migrate.test.js dist/db/integration.test.js",
-    "test:unit": "npm run build && node --test dist/services/project.service.test.js dist/services/vault-file.service.test.js dist/services/email/email.service.test.js",
+    "test": "npm run build && node --env-file=.env.test --test --test-concurrency=1 dist/db/migrate.test.js dist/db/integration.test.js",
+    "test:unit": "npm run build && node --env-file=.env.test --test dist/services/project.service.test.js dist/services/vault-file.service.test.js dist/services/email/email.service.test.js",
     "seed": "node scripts/seedProjects.js",
     "seed:check": "node scripts/seedProjects.js --dry-run"
   },
@@ -20,6 +20,7 @@
     "argon2": "^0.45.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.0",
     "express-rate-limit": "^8.6.2",
     "nodemailer": "^9.1.1",

@@ -1,9 +1,12 @@
 import { pool } from '../db/connection';
 import { findTask, type TaskRow } from '../db/repositories/task.repository';
+import { findUserById } from '../db/repositories/user.repository';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { isIsoDate } from '../utils/date.util';
 import { isUuid } from '../utils/request.util';
+import { env } from '../config/env';
+import { sendTaskAssignmentEmail } from './email/email.service';
 import { requireAdmin, requireProjectAccess, requireProjectLead } from './project-access.service';
 
 const TASK_STATUSES = new Set(['todo', 'in_progress', 'blocked', 'reviewing', 'reviewed', 'done']);
@@ -120,6 +123,25 @@ async function requireMutableTask(user: AuthenticatedUser, task: TaskRow, update
   await requireProjectLead(user, task.project_id);
 }
 
+async function notifyAssigneeOnTaskAssignment(assigneeUserId: string, task: TaskRow): Promise<void> {
+  if (!env.frontendAppUrl) return;
+  const assignee = await findUserById(assigneeUserId);
+  if (!assignee) return;
+
+  const taskUrl = `${env.frontendAppUrl.replace(/\/$/, '')}/tasks/${encodeURIComponent(task.id)}`;
+  try {
+    await sendTaskAssignmentEmail({
+      assigneeEmail: assignee.email,
+      assigneeName: assignee.name,
+      projectName: String(task.project_name),
+      taskTitle: String(task.title),
+      taskUrl,
+    });
+  } catch (error) {
+    console.error(`Failed to email task assignment for task ${task.id}:`, error);
+  }
+}
+
 function parseCreateTaskInput(body: unknown): CreateTaskInput {
   const input = body as Record<string, unknown>;
   const projectId = optionalIdentifier(input.project_id);
@@ -186,6 +208,12 @@ export async function createTask(user: AuthenticatedUser, body: unknown): Promis
 
   const task = await findTask(taskId);
   if (!task) throw new AppError(500, 'Task creation failed.');
+
+  const assigneeUserId = input.assigneeUserId;
+  if (assigneeUserId) {
+    await notifyAssigneeOnTaskAssignment(assigneeUserId, task);
+  }
+
   return task;
 }
 
@@ -239,6 +267,12 @@ export async function updateTask(user: AuthenticatedUser, taskId: string, body: 
 
   const updatedTask = await findTask(taskId);
   if (!updatedTask) throw new AppError(500, 'Task update failed.');
+
+  const newAssigneeId = updates.assigneeUserId;
+  if (newAssigneeId !== undefined && newAssigneeId !== null && newAssigneeId !== task.assignee_user_id) {
+    await notifyAssigneeOnTaskAssignment(newAssigneeId, updatedTask);
+  }
+
   return updatedTask;
 }
 

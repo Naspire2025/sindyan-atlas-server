@@ -48,3 +48,18 @@ export async function sendInvitationEmail(input: {
     html: `<p>Hello ${input.name},</p><p>You have been invited to Atlas. Accept your invitation by clicking below:</p><p><a href="${input.invitationUrl}">Accept invitation</a></p>`,
   });
 }
+
+export async function sendTaskAssignmentEmail(input: {
+  assigneeEmail: string;
+  assigneeName: string;
+  projectName: string;
+  taskTitle: string;
+  taskUrl: string;
+}): Promise<void> {
+  await sendEmail({
+    to: input.assigneeEmail,
+    subject: `You have been assigned a task in ${input.projectName}`,
+    text: `Hello ${input.assigneeName},\n\nYou have been assigned a task in ${input.projectName}: "${input.taskTitle}".\nOpen it here:\n${input.taskUrl}\n`,
+    html: `<p>Hello ${input.assigneeName},</p><p>You have been assigned a task in <strong>${input.projectName}</strong>:</p><p><a href="${input.taskUrl}">${input.taskTitle}</a></p>`,
+  });
+}
