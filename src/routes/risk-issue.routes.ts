@@ -4,6 +4,8 @@ import {
   createRiskController,
   deleteIssueController,
   deleteRiskController,
+  listAllIssuesController,
+  listAllRisksController,
   listIssuesController,
   listRisksController,
   updateIssueController,
@@ -20,8 +22,10 @@ projectRiskIssueRouter.post('/risks', requireAuth, createRiskController);
 projectRiskIssueRouter.get('/issues', requireAuth, listIssuesController);
 projectRiskIssueRouter.post('/issues', requireAuth, createIssueController);
 
+standaloneRiskRouter.get('/', requireAuth, listAllRisksController);
 standaloneRiskRouter.patch('/:riskId', requireAuth, updateRiskController);
 standaloneRiskRouter.delete('/:riskId', requireAuth, deleteRiskController);
 
+standaloneIssueRouter.get('/', requireAuth, listAllIssuesController);
 standaloneIssueRouter.patch('/:issueId', requireAuth, updateIssueController);
 standaloneIssueRouter.delete('/:issueId', requireAuth, deleteIssueController);

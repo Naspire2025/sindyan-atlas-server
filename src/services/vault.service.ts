@@ -84,12 +84,16 @@ async function recordAudit(entryId: string, userId: string, action: string, meta
   });
 }
 
-export async function listEntries(user: AuthenticatedUser, query: { project_id?: string }) {
-  const filters: { projectId?: string; includeArchived?: boolean } = { includeArchived: false };
+export async function listEntries(user: AuthenticatedUser, query: { project_id?: string; owner_user_id?: string }) {
+  const filters: { projectId?: string; ownerUserId?: string; includeArchived?: boolean } = { includeArchived: false };
   if (query.project_id) {
     const projectId = parseUuid(query.project_id, 'project_id must be a valid UUID.');
     await requireProjectAccess(user, projectId);
     filters.projectId = projectId;
+  }
+  if (query.owner_user_id) {
+    const ownerId = parseUuid(query.owner_user_id, 'owner_user_id must be a valid UUID.');
+    filters.ownerUserId = ownerId;
   }
   const entriesWithAccess = await Promise.all((await listVaultEntries(filters)).map(async (entry) => ({
     entry,

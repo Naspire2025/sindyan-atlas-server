@@ -11,6 +11,10 @@ import {
   updateIssue,
   updateRisk,
 } from '../db/repositories/risk-issue.repository';
+import {
+  listAllIssues,
+  listAllRisks,
+} from '../db/repositories/dashboard.repository';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { isUuid } from '../utils/request.util';
@@ -69,6 +73,11 @@ async function validateOwnerMembership(projectId: string, ownerUserId: string | 
 }
 
 // --- Risks ---
+
+export async function listAllProjectRisks(user: AuthenticatedUser) {
+  const isAdmin = user.role === 'admin';
+  return listAllRisks(user.id, isAdmin);
+}
 
 export async function listProjectRisks(user: AuthenticatedUser, projectId: string) {
   await requireProjectAccess(user, projectId);
@@ -131,6 +140,11 @@ export async function deleteRiskRecord(user: AuthenticatedUser, riskId: string):
 }
 
 // --- Issues ---
+
+export async function listAllProjectIssues(user: AuthenticatedUser) {
+  const isAdmin = user.role === 'admin';
+  return listAllIssues(user.id, isAdmin);
+}
 
 export async function listProjectIssues(user: AuthenticatedUser, projectId: string) {
   await requireProjectAccess(user, projectId);

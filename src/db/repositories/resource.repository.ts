@@ -19,6 +19,16 @@ export async function listCapacityProfilesForUser(userId: string): Promise<Capac
   return result.rows as CapacityProfileRow[];
 }
 
+export async function listAllCapacityProfiles(): Promise<Array<Record<string, unknown>>> {
+  const result = await pool.query(
+    `SELECT cp.*, u.name AS user_name, u.email_display AS user_email
+     FROM member_capacity_profiles cp
+     LEFT JOIN users u ON u.id = cp.user_id
+     ORDER BY u.name ASC, cp.effective_from DESC, cp.id ASC`,
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
+
 export async function createCapacityProfile(input: Record<string, unknown>): Promise<string> {
   const result = await pool.query(
     `INSERT INTO member_capacity_profiles (user_id, effective_from, weekly_capacity_hours, created_by_user_id)
@@ -217,18 +227,108 @@ export async function deleteAssetAllocation(allocationId: string): Promise<void>
   await pool.query('DELETE FROM asset_allocations WHERE id = $1', [allocationId]);
 }
 
-export async function fetchWorkloadSummary(): Promise<Array<Record<string, unknown>>> {
+export async function fetchWorkloadSummary(dateRange?: { startsOn?: string; endsOn?: string }): Promise<Array<Record<string, unknown>>> {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const startsOn = dateRange?.startsOn || todayStr;
+  const endsOn = dateRange?.endsOn || todayStr;
+
   const result = await pool.query(`
+    WITH latest_capacity AS (
+      SELECT DISTINCT ON (user_id) user_id, weekly_capacity_hours
+      FROM member_capacity_profiles
+      ORDER BY user_id, effective_from DESC
+    ),
+    availability_reduction AS (
+      SELECT
+        av.user_id,
+        COALESCE(
+          SUM(
+            LEAST (av.ends_on, $2::text) :: date
+            - GREATEST (av.starts_on, $1::text) :: date
+            + 1
+          ) * av.capacity_hours / 7.0,
+          0.0
+        ) AS unavailable_hours
+      FROM member_availability av
+      WHERE av.starts_on <= $2 AND av.ends_on >= $1
+        AND av.availability_status IN ('unavailable', 'reduced_capacity')
+      GROUP BY av.user_id, av.capacity_hours
+    )
     SELECT
-      u.id AS user_id, u.name AS user_name,
-      COUNT(DISTINCT pa.project_id) AS allocated_projects,
-      COALESCE(SUM(pa.allocation_percent), 0) AS total_allocation_percent
+      u.id AS user_id,
+      u.name AS user_name,
+      u.email_display AS email,
+      COALESCE(lc.weekly_capacity_hours, 40) AS capacity_hours,
+      ROUND(
+        COALESCE(SUM(pa.allocation_percent), 0.0) / 100.0
+          * COALESCE(lc.weekly_capacity_hours, 40)
+          * GREATEST(1.0, ((LEAST(pa.ends_on, $2) :: date - GREATEST(pa.starts_on, $1) :: date + 1) / 7.0) :: double precision)
+          - COALESCE(ar.unavailable_hours, 0.0),
+        1
+      ) AS allocated_hours,
+      COUNT(DISTINCT pa.project_id) AS allocated_projects
     FROM users u
-    LEFT JOIN project_member_allocations pa ON pa.user_id = u.id AND pa.starts_on <= CURRENT_DATE::text AND pa.ends_on >= CURRENT_DATE::text
+    LEFT JOIN latest_capacity lc ON lc.user_id = u.id
+    LEFT JOIN project_member_allocations pa
+      ON pa.user_id = u.id AND pa.starts_on <= $2 AND pa.ends_on >= $1
+    LEFT JOIN availability_reduction ar ON ar.user_id = u.id
     WHERE u.status = 'active'
-    GROUP BY u.id
+    GROUP BY u.id, u.name, u.email_display, lc.weekly_capacity_hours, ar.unavailable_hours
     ORDER BY u.name
-  `);
+  `, [startsOn, endsOn]);
+  return result.rows as Array<Record<string, unknown>>;
+}
+
+export async function fetchProjectWorkloadSummary(projectId: string, dateRange?: { startsOn?: string; endsOn?: string }): Promise<Array<Record<string, unknown>>> {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const startsOn = dateRange?.startsOn || todayStr;
+  const endsOn = dateRange?.endsOn || todayStr;
+
+  const result = await pool.query(`
+    WITH latest_capacity AS (
+      SELECT DISTINCT ON (user_id) user_id, weekly_capacity_hours
+      FROM member_capacity_profiles
+      ORDER BY user_id, effective_from DESC
+    ),
+    availability_reduction AS (
+      SELECT
+        av.user_id,
+        COALESCE(
+          SUM(
+            LEAST (av.ends_on, $3::text) :: date
+            - GREATEST (av.starts_on, $2::text) :: date
+            + 1
+          ) * av.capacity_hours / 7.0,
+          0.0
+        ) AS unavailable_hours
+      FROM member_availability av
+      WHERE av.starts_on <= $3 AND av.ends_on >= $2
+        AND av.availability_status IN ('unavailable', 'reduced_capacity')
+      GROUP BY av.user_id, av.capacity_hours
+    )
+    SELECT
+      u.id AS user_id,
+      u.name AS user_name,
+      u.email_display AS email,
+      COALESCE(lc.weekly_capacity_hours, 40) AS capacity_hours,
+      ROUND(
+        COALESCE(SUM(pa.allocation_percent), 0.0) / 100.0
+          * COALESCE(lc.weekly_capacity_hours, 40)
+          * GREATEST(1.0, ((LEAST(pa.ends_on, $3) :: date - GREATEST(pa.starts_on, $2) :: date + 1) / 7.0) :: double precision)
+          - COALESCE(ar.unavailable_hours, 0.0),
+        1
+      ) AS allocated_hours,
+      1 AS allocated_projects
+    FROM users u
+    INNER JOIN project_memberships pm ON pm.user_id = u.id AND pm.project_id = $1
+    LEFT JOIN latest_capacity lc ON lc.user_id = u.id
+    LEFT JOIN project_member_allocations pa
+      ON pa.user_id = u.id AND pa.project_id = $1 AND pa.starts_on <= $3 AND pa.ends_on >= $2
+    LEFT JOIN availability_reduction ar ON ar.user_id = u.id
+    WHERE u.status = 'active'
+    GROUP BY u.id, u.name, u.email_display, lc.weekly_capacity_hours, ar.unavailable_hours
+    ORDER BY u.name
+  `, [projectId, startsOn, endsOn]);
   return result.rows as Array<Record<string, unknown>>;
 }
 

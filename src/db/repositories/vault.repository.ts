@@ -10,13 +10,17 @@ export async function findVaultEntry(entryId: string): Promise<VaultEntryRow | u
   return result.rows[0] as VaultEntryRow | undefined;
 }
 
-export async function listVaultEntries(filters: { projectId?: string; includeArchived?: boolean }): Promise<VaultEntryRow[]> {
+export async function listVaultEntries(filters: { projectId?: string; ownerUserId?: string; includeArchived?: boolean }): Promise<VaultEntryRow[]> {
   const conditions: string[] = [];
   const parameters: unknown[] = [];
   let paramIndex = 1;
   if (filters.projectId !== undefined) {
     conditions.push(`project_id = $${paramIndex++}`);
     parameters.push(filters.projectId);
+  }
+  if (filters.ownerUserId !== undefined) {
+    conditions.push(`owner_user_id = $${paramIndex++}`);
+    parameters.push(filters.ownerUserId);
   }
   if (!filters.includeArchived) {
     conditions.push('archived_at IS NULL');

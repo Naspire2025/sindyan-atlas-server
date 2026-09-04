@@ -4,6 +4,8 @@ import {
   createRiskRecord,
   deleteIssueRecord,
   deleteRiskRecord,
+  listAllProjectIssues,
+  listAllProjectRisks,
   listProjectIssues,
   listProjectRisks,
   updateIssueRecord,
@@ -12,6 +14,14 @@ import {
 import { parseUuid, requireUser } from '../utils/request.util';
 
 function projectId(request: Request): string { return parseUuid(request.params.projectId); }
+
+export async function listAllRisksController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try { response.json(await listAllProjectRisks(requireUser(request.user))); } catch (error) { next(error); }
+}
+
+export async function listAllIssuesController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try { response.json(await listAllProjectIssues(requireUser(request.user))); } catch (error) { next(error); }
+}
 
 export async function listRisksController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try { response.json(await listProjectRisks(requireUser(request.user), projectId(request))); } catch (error) { next(error); }

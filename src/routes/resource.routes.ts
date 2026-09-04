@@ -9,12 +9,14 @@ import {
   deleteAssetController,
   deleteAvailabilityController,
   deleteMemberAllocationController,
+  listAllCapacityProfilesController,
   listAssetAllocationsController,
   listAssetsController,
   listAvailabilityController,
   listCapacityProfilesController,
   listMemberAllocationsController,
   projectAllocationsController,
+  projectWorkloadController,
   updateAssetAllocationController,
   updateAssetController,
   updateAvailabilityController,
@@ -55,5 +57,7 @@ assetAllocationRouter.patch('/:allocationId', requireAuth, updateAssetAllocation
 assetAllocationRouter.delete('/:allocationId', requireAuth, deleteAssetAllocationController);
 
 resourceRouter.get('/workload', requireAuth, workloadController);
+resourceRouter.get('/capacity-profiles', requireAuth, listAllCapacityProfilesController);
 
 projectAllocationRouter.get('/allocations', requireAuth, projectAllocationsController);
+projectAllocationRouter.get('/workload', requireAuth, projectWorkloadController);

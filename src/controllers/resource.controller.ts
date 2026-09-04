@@ -10,7 +10,9 @@ import {
   deleteAvailabilityRecord,
   deleteMemberAllocationRecord,
   getProjectAllocationView,
+  getProjectWorkloadView,
   getWorkloadView,
+  listAllCapacityProfileRecords,
   listAssetAllocationRecords,
   listAssetRecords,
   listUserAvailability,
@@ -25,6 +27,10 @@ import {
 import { parseUuid, requireUser } from '../utils/request.util';
 
 function userId(request: Request): string { return parseUuid(request.params.userId); }
+
+export async function listAllCapacityProfilesController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try { response.json(await listAllCapacityProfileRecords(requireUser(request.user))); } catch (error) { next(error); }
+}
 
 export async function listCapacityProfilesController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try { response.json(await listUserCapacityProfiles(requireUser(request.user), userId(request))); } catch (error) { next(error); }
@@ -110,7 +116,11 @@ export async function deleteAssetAllocationController(request: Request, response
 }
 
 export async function workloadController(request: Request, response: Response, next: NextFunction): Promise<void> {
-  try { response.json(await getWorkloadView(requireUser(request.user))); } catch (error) { next(error); }
+  try { response.json(await getWorkloadView(requireUser(request.user), request.query as { starts_on?: string; ends_on?: string })); } catch (error) { next(error); }
+}
+
+export async function projectWorkloadController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try { response.json(await getProjectWorkloadView(requireUser(request.user), parseUuid(request.params.projectId), request.query as { starts_on?: string; ends_on?: string })); } catch (error) { next(error); }
 }
 
 export async function projectAllocationsController(request: Request, response: Response, next: NextFunction): Promise<void> {

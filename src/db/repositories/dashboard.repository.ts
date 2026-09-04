@@ -87,7 +87,7 @@ export async function fetchStalledTasks(userId: string, isAdmin: boolean, stalle
   return result.rows as Record<string, unknown>[];
 }
 
-export async function fetchHighSeverityRisks(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+export async function fetchActiveRisks(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
   const membershipClause = isAdmin ? '' : 'r.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
   const parameters = isAdmin ? [] : [userId];
   const result = await pool.query(`
@@ -96,8 +96,51 @@ export async function fetchHighSeverityRisks(userId: string, isAdmin: boolean): 
     FROM risks r
     JOIN projects p ON p.id = r.project_id
     LEFT JOIN users u ON u.id = r.owner_user_id
-    WHERE ${membershipClause} r.severity IN ('high', 'critical') AND r.status != 'resolved'
+    WHERE ${membershipClause} r.status != 'resolved'
     ORDER BY r.severity DESC, r.due_date ASC
+  `, parameters);
+  return result.rows as Record<string, unknown>[];
+}
+
+export async function fetchOpenIssues(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+  const membershipClause = isAdmin ? '' : 'i.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
+  const parameters = isAdmin ? [] : [userId];
+  const result = await pool.query(`
+    SELECT i.id, i.title, i.priority, i.status, i.target_resolution_date, i.project_id, p.name AS project_name,
+           u.name AS owner_name
+    FROM issues i
+    JOIN projects p ON p.id = i.project_id
+    LEFT JOIN users u ON u.id = i.owner_user_id
+    WHERE ${membershipClause} i.status != 'resolved'
+    ORDER BY i.priority DESC, i.target_resolution_date ASC
+  `, parameters);
+  return result.rows as Record<string, unknown>[];
+}
+
+export async function listAllRisks(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+  const membershipClause = isAdmin ? '' : 'r.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
+  const parameters = isAdmin ? [] : [userId];
+  const result = await pool.query(`
+    SELECT r.*, p.name AS project_name, u.name AS owner_name
+    FROM risks r
+    JOIN projects p ON p.id = r.project_id
+    LEFT JOIN users u ON u.id = r.owner_user_id
+    WHERE ${membershipClause} r.status != 'resolved'
+    ORDER BY r.severity DESC, r.due_date ASC
+  `, parameters);
+  return result.rows as Record<string, unknown>[];
+}
+
+export async function listAllIssues(userId: string, isAdmin: boolean): Promise<Record<string, unknown>[]> {
+  const membershipClause = isAdmin ? '' : 'i.project_id IN (SELECT project_id FROM project_memberships WHERE user_id = $1) AND';
+  const parameters = isAdmin ? [] : [userId];
+  const result = await pool.query(`
+    SELECT i.*, p.name AS project_name, u.name AS owner_name
+    FROM issues i
+    JOIN projects p ON p.id = i.project_id
+    LEFT JOIN users u ON u.id = i.owner_user_id
+    WHERE ${membershipClause} i.status != 'resolved'
+    ORDER BY i.priority DESC, i.target_resolution_date ASC
   `, parameters);
   return result.rows as Record<string, unknown>[];
 }

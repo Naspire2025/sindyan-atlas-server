@@ -19,6 +19,7 @@ import {
   listAssetAllocations,
   listAvailabilityForUser,
   listCapacityProfilesForUser,
+  listAllCapacityProfiles,
   listMemberAllocations,
   updateAsset,
   updateAssetAllocation,
@@ -26,6 +27,7 @@ import {
   updateCapacityProfile,
   updateMemberAllocation,
   fetchWorkloadSummary,
+  fetchProjectWorkloadSummary,
   fetchProjectAllocations,
 } from '../db/repositories/resource.repository';
 import type { AuthenticatedUser } from '../types/auth';
@@ -100,6 +102,11 @@ async function checkAssetOverlap(assetId: string, startsOn: string, endsOn: stri
 
 // --- Capacity Profiles ---
 
+export async function listAllCapacityProfileRecords(user: AuthenticatedUser) {
+  requireAdmin(user);
+  return listAllCapacityProfiles();
+}
+
 export async function listUserCapacityProfiles(user: AuthenticatedUser, userId: string) {
   requireAdmin(user);
   await requireExistingUser(userId);
@@ -113,8 +120,15 @@ export async function createCapacityProfileRecord(user: AuthenticatedUser, userI
   const effectiveFrom = requiredDate(input.effective_from, 'effective_from');
   const weeklyCapacityHours = requiredNumber(input.weekly_capacity_hours, 'weekly_capacity_hours');
 
-  const profileId = await createCapacityProfile({ userId, effectiveFrom, weeklyCapacityHours, createdByUserId: user.id });
-  return findCapacityProfile(profileId);
+  try {
+    const profileId = await createCapacityProfile({ userId, effectiveFrom, weeklyCapacityHours, createdByUserId: user.id });
+    return findCapacityProfile(profileId);
+  } catch (error) {
+    if ((error as { code?: string }).code === '23505') {
+      throw new AppError(409, 'A capacity profile already exists for this effective date.');
+    }
+    throw error;
+  }
 }
 
 export async function updateCapacityProfileRecord(user: AuthenticatedUser, profileId: string, body: unknown) {
@@ -354,9 +368,20 @@ export async function deleteAssetAllocationRecord(user: AuthenticatedUser, alloc
 
 // --- Workload ---
 
-export async function getWorkloadView(user: AuthenticatedUser) {
+export async function getWorkloadView(user: AuthenticatedUser, query: { starts_on?: string; ends_on?: string }) {
   requireAdmin(user);
-  return fetchWorkloadSummary();
+  const dateRange: { startsOn?: string; endsOn?: string } = {};
+  if (query.starts_on) dateRange.startsOn = requiredDate(query.starts_on, 'starts_on');
+  if (query.ends_on) dateRange.endsOn = requiredDate(query.ends_on, 'ends_on');
+  return fetchWorkloadSummary(dateRange.startsOn || dateRange.endsOn ? dateRange : undefined);
+}
+
+export async function getProjectWorkloadView(user: AuthenticatedUser, projectId: string, query: { starts_on?: string; ends_on?: string }) {
+  await requireProjectAccess(user, projectId);
+  const dateRange: { startsOn?: string; endsOn?: string } = {};
+  if (query.starts_on) dateRange.startsOn = requiredDate(query.starts_on, 'starts_on');
+  if (query.ends_on) dateRange.endsOn = requiredDate(query.ends_on, 'ends_on');
+  return fetchProjectWorkloadSummary(projectId, dateRange.startsOn || dateRange.endsOn ? dateRange : undefined);
 }
 
 export async function getProjectAllocationView(user: AuthenticatedUser, projectId: string) {

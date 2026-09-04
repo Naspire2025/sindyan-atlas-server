@@ -1,9 +1,9 @@
 import {
   countOpenIssues,
   countOpenRisks,
+  fetchActiveRisks,
   fetchBlockedTasks,
-  fetchHighSeverityRisks,
-  fetchOverdueIssues,
+  fetchOpenIssues,
   fetchOverdueMilestones,
   fetchOverdueTasks,
   fetchOverviewProjects,
@@ -70,21 +70,21 @@ export async function getDashboardOverview(user: AuthenticatedUser) {
 export async function getDashboardAttention(user: AuthenticatedUser) {
   requireAdmin(user);
   const isAdmin = user.role === 'admin';
-  const [overdueMilestones, overdueTasks, stalledTasks, blockedTasks, highSeverityRisks, overdueIssues] = await Promise.all([
+  const [overdueMilestones, overdueTasks, stalledTasks, blockedTasks, activeRisks, openIssues] = await Promise.all([
     fetchOverdueMilestones(user.id, isAdmin),
     fetchOverdueTasks(user.id, isAdmin),
     fetchStalledTasks(user.id, isAdmin, env.taskStalledDays),
     fetchBlockedTasks(user.id, isAdmin),
-    fetchHighSeverityRisks(user.id, isAdmin),
-    fetchOverdueIssues(user.id, isAdmin),
+    fetchActiveRisks(user.id, isAdmin),
+    fetchOpenIssues(user.id, isAdmin),
   ]);
   return deduplicateAttentionItems([
     ...blockedTasks.map((item) => ({ ...item, item_type: 'task', reason: 'Task is blocked', severity: 'high' })),
     ...overdueTasks.map((item) => ({ ...item, item_type: 'task', reason: `Overdue since ${item.due_date}`, severity: 'high' })),
     ...stalledTasks.map((item) => ({ ...item, item_type: 'task', reason: `No update in ${env.taskStalledDays} days`, severity: 'medium' })),
     ...overdueMilestones.map((item) => ({ ...item, item_type: 'milestone', reason: `Milestone overdue since ${item.target_date}`, severity: 'high' })),
-    ...highSeverityRisks.map((item) => ({ ...item, item_type: 'risk', reason: 'High-severity active risk', severity: item.severity || 'high' })),
-    ...overdueIssues.map((item) => ({ ...item, item_type: 'issue', reason: `Resolution overdue since ${item.target_resolution_date}`, severity: 'high' })),
+    ...activeRisks.map((item) => ({ ...item, item_type: 'risk', reason: 'Active risk', severity: item.severity || 'medium' })),
+    ...openIssues.map((item) => ({ ...item, item_type: 'issue', reason: item.target_resolution_date ? `Target resolution: ${item.target_resolution_date}` : 'Open issue', severity: 'medium' })),
   ]);
 }
 
