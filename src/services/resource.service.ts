@@ -15,6 +15,7 @@ import {
   findAvailability,
   findCapacityProfile,
   findMemberAllocation,
+  listAllAvailability,
   listAssets,
   listAssetAllocations,
   listAvailabilityForUser,
@@ -199,6 +200,11 @@ export async function listUserAvailability(user: AuthenticatedUser, userId: stri
   requireAdmin(user);
   await requireExistingUser(userId);
   return listAvailabilityForUser(userId);
+}
+
+export async function listAllAvailabilityRecords(user: AuthenticatedUser) {
+  requireAdmin(user);
+  return listAllAvailability();
 }
 
 export async function createAvailabilityRecord(user: AuthenticatedUser, userId: string, body: unknown) {

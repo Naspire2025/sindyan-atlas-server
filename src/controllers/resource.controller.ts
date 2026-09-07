@@ -12,6 +12,7 @@ import {
   getProjectAllocationView,
   getProjectWorkloadView,
   getWorkloadView,
+  listAllAvailabilityRecords,
   listAllCapacityProfileRecords,
   listAssetAllocationRecords,
   listAssetRecords,
@@ -30,6 +31,10 @@ function userId(request: Request): string { return parseUuid(request.params.user
 
 export async function listAllCapacityProfilesController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try { response.json(await listAllCapacityProfileRecords(requireUser(request.user))); } catch (error) { next(error); }
+}
+
+export async function listAllAvailabilityController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try { response.json(await listAllAvailabilityRecords(requireUser(request.user))); } catch (error) { next(error); }
 }
 
 export async function listCapacityProfilesController(request: Request, response: Response, next: NextFunction): Promise<void> {

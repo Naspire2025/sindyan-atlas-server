@@ -60,6 +60,13 @@ export async function listAvailabilityForUser(userId: string): Promise<Availabil
   return result.rows as AvailabilityRow[];
 }
 
+export async function listAllAvailability(): Promise<AvailabilityRow[]> {
+  const result = await pool.query(
+    'SELECT * FROM member_availability ORDER BY user_id ASC, starts_on ASC, id ASC',
+  );
+  return result.rows as AvailabilityRow[];
+}
+
 export async function createAvailability(input: Record<string, unknown>): Promise<string> {
   const result = await pool.query(
     `INSERT INTO member_availability (user_id, starts_on, ends_on, capacity_hours, availability_status, note, created_by_user_id)

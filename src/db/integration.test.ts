@@ -177,6 +177,9 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
     listAssetRecords,
     createMemberAllocationRecord,
     listMemberAllocationRecords,
+    createAvailabilityRecord,
+    listAllAvailabilityRecords,
+    listUserAvailability,
   } = require('../services/resource.service') as typeof import('../services/resource.service');
 
   await assert.rejects(
@@ -262,6 +265,30 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
     allocation_percent: 30,
   });
   assert.ok(spanningAssetAllocation);
+
+  // ── Availability ────────────────────────────────────────────────────────────
+
+  const availability = await createAvailabilityRecord(admin, memberId, {
+    starts_on: '2026-07-01',
+    ends_on: '2026-07-14',
+    capacity_hours: 0,
+    availability_status: 'unavailable',
+    note: 'Annual leave',
+  });
+  assert.ok(availability);
+
+  await assert.rejects(
+    createAvailabilityRecord(lead, memberId, { starts_on: '2026-08-01', ends_on: '2026-08-07', capacity_hours: 0, availability_status: 'unavailable' }),
+    { message: 'Administrator access is required.' },
+  );
+  const availabilityRoster = await listAllAvailabilityRecords(admin);
+  assert.equal(availabilityRoster.length, 1);
+  assert.equal(availabilityRoster[0].user_id, memberId);
+  assert.equal((await listUserAvailability(admin, memberId)).length, 1);
+  await assert.rejects(
+    listAllAvailabilityRecords(lead),
+    { message: 'Administrator access is required.' },
+  );
 
   // ── Risks and Issues ────────────────────────────────────────────────────────
 
