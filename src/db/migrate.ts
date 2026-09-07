@@ -1,6 +1,6 @@
 import { pool } from './connection';
 
-const CURRENT_SCHEMA_VERSION = 4;
+const CURRENT_SCHEMA_VERSION = 5;
 
 async function columnExists(tableName: string, columnName: string): Promise<boolean> {
   const { rows } = await pool.query(
@@ -250,7 +250,6 @@ async function createSchema(): Promise<void> {
       starts_on TEXT NOT NULL,
       ends_on TEXT NOT NULL,
       allocation_percent REAL NOT NULL CHECK (allocation_percent BETWEEN 0 AND 100),
-      planned_hours REAL CHECK (planned_hours >= 0),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       CHECK (ends_on >= starts_on)
@@ -422,6 +421,9 @@ const SEQUENTIAL_MIGRATIONS: Record<number, () => Promise<void>> = {
     `);
     await createSchema();
     await createIndexes();
+  },
+  5: async () => {
+    await pool.query('ALTER TABLE project_member_allocations DROP COLUMN IF EXISTS planned_hours');
   },
 };
 

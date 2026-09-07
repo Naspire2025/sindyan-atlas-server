@@ -173,6 +173,7 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
     createCapacityProfileRecord,
     listUserCapacityProfiles,
     createAssetRecord,
+    createAssetAllocationRecord,
     listAssetRecords,
     createMemberAllocationRecord,
     listMemberAllocationRecords,
@@ -213,8 +214,54 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
       ends_on: '2026-04-30',
       allocation_percent: 60,
     }),
-    { message: 'Allocation exceeds the member\u2019s available capacity.' },
+    { message: 'Member is already allocated up to 50% during these dates. This allocation would bring the total to 110%.' },
   );
+
+  await createMemberAllocationRecord(admin, {
+    project_id: project1.id,
+    user_id: leadId,
+    starts_on: '2026-01-01',
+    ends_on: '2026-01-31',
+    allocation_percent: 70,
+  });
+  await createMemberAllocationRecord(admin, {
+    project_id: project1.id,
+    user_id: leadId,
+    starts_on: '2026-03-01',
+    ends_on: '2026-03-31',
+    allocation_percent: 70,
+  });
+  const spanningAllocation = await createMemberAllocationRecord(admin, {
+    project_id: project2.id,
+    user_id: leadId,
+    starts_on: '2026-01-01',
+    ends_on: '2026-03-31',
+    allocation_percent: 30,
+  });
+  assert.ok(spanningAllocation);
+
+  await createAssetAllocationRecord(admin, {
+    asset_id: asset!.id,
+    project_id: project1.id,
+    starts_on: '2026-01-01',
+    ends_on: '2026-01-31',
+    allocation_percent: 70,
+  });
+  await createAssetAllocationRecord(admin, {
+    asset_id: asset!.id,
+    project_id: project1.id,
+    starts_on: '2026-03-01',
+    ends_on: '2026-03-31',
+    allocation_percent: 70,
+  });
+  const spanningAssetAllocation = await createAssetAllocationRecord(admin, {
+    asset_id: asset!.id,
+    project_id: project2.id,
+    starts_on: '2026-01-01',
+    ends_on: '2026-03-31',
+    allocation_percent: 30,
+  });
+  assert.ok(spanningAssetAllocation);
 
   // ── Risks and Issues ────────────────────────────────────────────────────────
 
@@ -288,4 +335,9 @@ test('Phase 3-8: finance, dashboard, resource, risks, vault integration', async 
     'vault_entries', 'vault_tags', 'vault_entry_tags', 'vault_secrets', 'vault_files', 'vault_audit_log']) {
     assert.ok(tableNames.has(name), `table ${name} should exist`);
   }
+  const plannedHoursColumn = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'project_member_allocations' AND column_name = 'planned_hours'`,
+  );
+  assert.equal(plannedHoursColumn.rowCount, 0);
 });

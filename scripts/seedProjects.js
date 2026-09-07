@@ -403,9 +403,9 @@ async function seedResources(client, data, stats, creatorUserId) {
     for (const member of project.members || []) {
       if (member.projectRole !== 'project_lead') continue;
       await client.query(`
-        INSERT INTO project_member_allocations (project_id, user_id, starts_on, ends_on, allocation_percent, planned_hours)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `, [projectResult.rows[0].id, resolvedUserId(member.userId), start, end, 40, 8]);
+        INSERT INTO project_member_allocations (project_id, user_id, starts_on, ends_on, allocation_percent)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [projectResult.rows[0].id, resolvedUserId(member.userId), start, end, 40]);
       allocationCount += 1;
     }
   }

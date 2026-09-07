@@ -118,9 +118,9 @@ export async function listMemberAllocations(filters: { projectId?: string; userI
 
 export async function createMemberAllocation(input: Record<string, unknown>): Promise<string> {
   const result = await pool.query(
-    `INSERT INTO project_member_allocations (project_id, user_id, starts_on, ends_on, allocation_percent, planned_hours)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-    [input.projectId, input.userId, input.startsOn, input.endsOn, input.allocationPercent, input.plannedHours],
+    `INSERT INTO project_member_allocations (project_id, user_id, starts_on, ends_on, allocation_percent)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+    [input.projectId, input.userId, input.startsOn, input.endsOn, input.allocationPercent],
   );
   return result.rows[0].id as string;
 }
@@ -128,10 +128,9 @@ export async function createMemberAllocation(input: Record<string, unknown>): Pr
 export async function updateMemberAllocation(allocationId: string, input: Record<string, unknown>): Promise<void> {
   await pool.query(
     `UPDATE project_member_allocations
-     SET starts_on = $1, ends_on = $2, allocation_percent = $3,
-         planned_hours = $4, updated_at = NOW()
-     WHERE id = $5`,
-    [input.startsOn, input.endsOn, input.allocationPercent, input.plannedHours, allocationId],
+     SET starts_on = $1, ends_on = $2, allocation_percent = $3, updated_at = NOW()
+     WHERE id = $4`,
+    [input.startsOn, input.endsOn, input.allocationPercent, allocationId],
   );
 }
 
@@ -260,10 +259,17 @@ export async function fetchWorkloadSummary(dateRange?: { startsOn?: string; ends
       u.email_display AS email,
       COALESCE(lc.weekly_capacity_hours, 40) AS capacity_hours,
       ROUND(
-        COALESCE(SUM(pa.allocation_percent), 0.0) / 100.0
-          * COALESCE(lc.weekly_capacity_hours, 40)
-          * GREATEST(1.0, ((LEAST(pa.ends_on, $2) :: date - GREATEST(pa.starts_on, $1) :: date + 1) / 7.0) :: double precision)
-          - COALESCE(ar.unavailable_hours, 0.0),
+        (
+          COALESCE(
+            SUM(
+              pa.allocation_percent / 100.0
+                * COALESCE(lc.weekly_capacity_hours, 40)
+                * GREATEST(1.0, ((LEAST(pa.ends_on, $2) :: date - GREATEST(pa.starts_on, $1) :: date + 1) / 7.0) :: double precision)
+            ),
+            0.0
+          )
+          - COALESCE(ar.unavailable_hours, 0.0)
+        ) :: numeric,
         1
       ) AS allocated_hours,
       COUNT(DISTINCT pa.project_id) AS allocated_projects
@@ -312,10 +318,17 @@ export async function fetchProjectWorkloadSummary(projectId: string, dateRange?:
       u.email_display AS email,
       COALESCE(lc.weekly_capacity_hours, 40) AS capacity_hours,
       ROUND(
-        COALESCE(SUM(pa.allocation_percent), 0.0) / 100.0
-          * COALESCE(lc.weekly_capacity_hours, 40)
-          * GREATEST(1.0, ((LEAST(pa.ends_on, $3) :: date - GREATEST(pa.starts_on, $2) :: date + 1) / 7.0) :: double precision)
-          - COALESCE(ar.unavailable_hours, 0.0),
+        (
+          COALESCE(
+            SUM(
+              pa.allocation_percent / 100.0
+                * COALESCE(lc.weekly_capacity_hours, 40)
+                * GREATEST(1.0, ((LEAST(pa.ends_on, $3) :: date - GREATEST(pa.starts_on, $2) :: date + 1) / 7.0) :: double precision)
+            ),
+            0.0
+          )
+          - COALESCE(ar.unavailable_hours, 0.0)
+        ) :: numeric,
         1
       ) AS allocated_hours,
       1 AS allocated_projects

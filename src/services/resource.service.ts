@@ -38,6 +38,12 @@ import { requireAdmin, requireProjectAccess } from './project-access.service';
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ASSET_STATUSES = new Set(['available', 'in_use', 'reserved', 'retired', 'unavailable']);
 const AVAILABILITY_STATUSES = new Set(['available', 'unavailable', 'reduced_capacity']);
+const FULL_CAPACITY_PERCENTAGE = 100;
+
+const ALLOCATION_SOURCES = {
+  asset: { tableName: 'asset_allocations', ownerColumn: 'asset_id' },
+  member: { tableName: 'project_member_allocations', ownerColumn: 'user_id' },
+} as const;
 
 function requiredText(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value.trim()) throw new AppError(400, `${field} is required.`);
@@ -82,22 +88,65 @@ async function requireExistingUser(userId: string): Promise<void> {
   }
 }
 
-async function checkAllocationOverlap(_projectId: string, userId: string, startsOn: string, endsOn: string, allocationPercent: number, excludeId?: string): Promise<void> {
-  const conditions: string[] = ['user_id = $1', 'starts_on <= $2', 'ends_on >= $3'];
-  const parameters: unknown[] = [userId, endsOn, startsOn];
-  if (excludeId) { conditions.push(`id != $${parameters.length + 1}`); parameters.push(excludeId); }
-  const result = await pool.query(`SELECT COALESCE(SUM(allocation_percent), 0) AS total FROM project_member_allocations WHERE ${conditions.join(' AND ')}`, parameters);
-  const existingPercent = (result.rows[0] as { total: number }).total;
-  if (existingPercent + allocationPercent > 100) throw new AppError(409, 'Allocation exceeds the member\u2019s available capacity.');
+async function getPeakAllocationPercentage(
+  allocationType: keyof typeof ALLOCATION_SOURCES,
+  ownerId: string,
+  startsOn: string,
+  endsOn: string,
+  excludeId?: string,
+): Promise<number> {
+  const { tableName, ownerColumn } = ALLOCATION_SOURCES[allocationType];
+  const parameters: unknown[] = [ownerId, startsOn, endsOn];
+  const excludeCondition = excludeId ? `AND id != $${parameters.push(excludeId)}` : '';
+  const result = await pool.query(
+    `WITH relevant_allocations AS (
+       SELECT
+         GREATEST(starts_on::date, $2::date) AS starts_on,
+         LEAST(ends_on::date, $3::date) AS ends_on,
+         allocation_percent
+       FROM ${tableName}
+       WHERE ${ownerColumn} = $1
+         AND starts_on <= $3
+         AND ends_on >= $2
+         ${excludeCondition}
+     ), allocation_events AS (
+       SELECT starts_on AS event_date, allocation_percent AS percentage_change FROM relevant_allocations
+       UNION ALL
+       SELECT ends_on + 1 AS event_date, -allocation_percent AS percentage_change FROM relevant_allocations
+     ), concurrent_allocations AS (
+       SELECT SUM(SUM(percentage_change)) OVER (ORDER BY event_date) AS total_percentage
+       FROM allocation_events
+       GROUP BY event_date
+     )
+     SELECT COALESCE(MAX(total_percentage), 0) AS peak_percentage
+     FROM concurrent_allocations`,
+    parameters,
+  );
+  return Number((result.rows[0] as { peak_percentage: number | string }).peak_percentage);
 }
 
-async function checkAssetOverlap(assetId: string, startsOn: string, endsOn: string, allocationPercent: number, excludeId?: string): Promise<void> {
-  const conditions: string[] = ['asset_id = $1', 'starts_on <= $2', 'ends_on >= $3'];
-  const parameters: unknown[] = [assetId, endsOn, startsOn];
-  if (excludeId) { conditions.push(`id != $${parameters.length + 1}`); parameters.push(excludeId); }
-  const result = await pool.query(`SELECT COALESCE(SUM(allocation_percent), 0) AS total FROM asset_allocations WHERE ${conditions.join(' AND ')}`, parameters);
-  const existingPercent = (result.rows[0] as { total: number }).total;
-  if (existingPercent + allocationPercent > 100) throw new AppError(409, 'Allocation exceeds the asset\u2019s available capacity.');
+function formatPercentage(value: number): string {
+  return new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value);
+}
+
+async function requireAvailableAllocationCapacity(
+  allocationType: keyof typeof ALLOCATION_SOURCES,
+  ownerId: string,
+  startsOn: string,
+  endsOn: string,
+  allocationPercentage: number,
+  excludeId?: string,
+): Promise<void> {
+  const peakPercentage = await getPeakAllocationPercentage(allocationType, ownerId, startsOn, endsOn, excludeId);
+  const resultingPercentage = peakPercentage + allocationPercentage;
+  if (resultingPercentage <= FULL_CAPACITY_PERCENTAGE) return;
+
+  const ownerLabel = allocationType === 'member' ? 'Member' : 'Asset';
+  throw new AppError(
+    409,
+    `${ownerLabel} is already allocated up to ${formatPercentage(peakPercentage)}% during these dates. ` +
+    `This allocation would bring the total to ${formatPercentage(resultingPercentage)}%.`,
+  );
 }
 
 // --- Capacity Profiles ---
@@ -225,11 +274,9 @@ export async function createMemberAllocationRecord(user: AuthenticatedUser, body
   if (endsOn < startsOn) throw new AppError(400, 'ends_on must not be before starts_on.');
   const rawPercent = input.allocation_percent ?? input.allocation_percentage ?? input.percentage;
   const allocationPercent = requiredPercent(rawPercent, 'allocation_percent');
-  const rawHours = input.planned_hours ?? input.plannedHours;
-  const plannedHours = rawHours === undefined || rawHours === null || rawHours === '' ? null : requiredNumber(rawHours, 'planned_hours');
 
-  await checkAllocationOverlap(projectId, userId, startsOn, endsOn, allocationPercent);
-  const allocationId = await createMemberAllocation({ projectId, userId, startsOn, endsOn, allocationPercent, plannedHours });
+  await requireAvailableAllocationCapacity('member', userId, startsOn, endsOn, allocationPercent);
+  const allocationId = await createMemberAllocation({ projectId, userId, startsOn, endsOn, allocationPercent });
   return findMemberAllocation(allocationId);
 }
 
@@ -245,11 +292,9 @@ export async function updateMemberAllocationRecord(user: AuthenticatedUser, allo
   if (endsOn < startsOn) throw new AppError(400, 'ends_on must not be before starts_on.');
   const rawPercent = input.allocation_percent ?? input.allocation_percentage ?? input.percentage;
   const allocationPercent = rawPercent === undefined ? Number(existing.allocation_percent) : requiredPercent(rawPercent, 'allocation_percent');
-  const rawHours = input.planned_hours ?? input.plannedHours;
-  const plannedHours = rawHours === undefined ? existing.planned_hours ?? null : (rawHours === null || rawHours === '' ? null : requiredNumber(rawHours, 'planned_hours'));
 
-  await checkAllocationOverlap(String(existing.project_id), String(existing.user_id), startsOn, endsOn, allocationPercent, allocationId);
-  await updateMemberAllocation(allocationId, { startsOn, endsOn, allocationPercent, plannedHours });
+  await requireAvailableAllocationCapacity('member', String(existing.user_id), startsOn, endsOn, allocationPercent, allocationId);
+  await updateMemberAllocation(allocationId, { startsOn, endsOn, allocationPercent });
   return findMemberAllocation(allocationId);
 }
 
@@ -335,7 +380,7 @@ export async function createAssetAllocationRecord(user: AuthenticatedUser, body:
   const allocationPercent = requiredPercent(rawPercent, 'allocation_percent');
   const note = optionalText(input.note);
 
-  await checkAssetOverlap(assetId, startsOn, endsOn, allocationPercent);
+  await requireAvailableAllocationCapacity('asset', assetId, startsOn, endsOn, allocationPercent);
   const allocationId = await createAssetAllocation({ assetId, projectId, startsOn, endsOn, allocationPercent, note, createdByUserId: user.id });
   return findAssetAllocation(allocationId);
 }
@@ -354,7 +399,7 @@ export async function updateAssetAllocationRecord(user: AuthenticatedUser, alloc
   const allocationPercent = rawPercent === undefined ? Number(existing.allocation_percent) : requiredPercent(rawPercent, 'allocation_percent');
   const note = input.note === undefined ? existing.note ?? null : optionalText(input.note);
 
-  await checkAssetOverlap(String(existing.asset_id), startsOn, endsOn, allocationPercent, allocationId);
+  await requireAvailableAllocationCapacity('asset', String(existing.asset_id), startsOn, endsOn, allocationPercent, allocationId);
   await updateAssetAllocation(allocationId, { startsOn, endsOn, allocationPercent, note });
   return findAssetAllocation(allocationId);
 }
