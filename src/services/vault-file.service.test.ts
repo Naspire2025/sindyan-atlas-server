@@ -1,6 +1,7 @@
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import { Readable } from 'node:stream';
 
 const repository = require('../db/repositories/vault.repository') as typeof import('../db/repositories/vault.repository');
 const r2 = require('./r2.service') as typeof import('./r2.service');
@@ -27,6 +28,11 @@ function installMocks(context: TestContext, overrides: Record<string, unknown> =
   setMock(r2 as unknown as Record<string, unknown>, 'createSignedUploadUrl', async () => 'https://upload.example.test');
   setMock(r2 as unknown as Record<string, unknown>, 'verifyObjectExists', async () => true);
   setMock(r2 as unknown as Record<string, unknown>, 'createSignedDownloadUrl', async () => 'https://download.example.test');
+  setMock(r2 as unknown as Record<string, unknown>, 'getObjectStream', async () => ({
+    stream: Readable.from(['preview']),
+    contentLength: 7,
+    contentType: 'application/pdf',
+  }));
   setMock(r2 as unknown as Record<string, unknown>, 'deleteObject', async () => undefined);
 
   for (const [key, value] of Object.entries(overrides)) {
@@ -81,6 +87,30 @@ test('reviewFile only allows admins to move quarantined files through review', a
   await assert.rejects(reviewFile(member, '00000000-0000-7000-8000-000000000020', { status: 'available' }), { message: 'Administrator access is required.' });
   assert.deepEqual(await reviewFile(admin, '00000000-0000-7000-8000-000000000020', { status: 'available' }), { file_id: '00000000-0000-7000-8000-000000000020', storage_status: 'available' });
   assert.deepEqual(statuses, ['available']);
+});
+
+test('getFileContent returns an authenticated stream only for available files', async (context) => {
+  installMocks(context, {
+    findVaultFile: async () => ({
+      id: '00000000-0000-7000-8000-000000000020',
+      vault_entry_id: '00000000-0000-7000-8000-000000000010',
+      storage_key: 'vault/10/mock',
+      original_filename: 'brief.pdf',
+      content_type: 'application/pdf',
+      size_bytes: 7,
+      storage_status: 'available',
+      uploaded_by_user_id: member.id,
+    }),
+  });
+  delete require.cache[require.resolve('./vault-file.service')];
+  const { getFileContent } = require('./vault-file.service') as typeof import('./vault-file.service');
+
+  const content = await getFileContent(member, '00000000-0000-7000-8000-000000000020');
+
+  assert.equal(content.filename, 'brief.pdf');
+  assert.equal(content.contentType, 'application/pdf');
+  assert.equal(content.contentLength, 7);
+  assert.ok(content.stream instanceof Readable);
 });
 
 test('deleteFile tracks deletion_pending when object deletion cannot be confirmed', async (context) => {

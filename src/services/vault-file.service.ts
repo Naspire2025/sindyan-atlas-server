@@ -7,7 +7,7 @@ import {
   updateVaultFileStatus,
   writeVaultAuditLog,
 } from '../db/repositories/vault.repository';
-import { generateStorageKey, isAllowedMimeType, isWithinSizeLimit, createSignedUploadUrl, verifyObjectExists, createSignedDownloadUrl, deleteObject, isR2Configured } from './r2.service';
+import { generateStorageKey, isAllowedMimeType, isWithinSizeLimit, createSignedUploadUrl, verifyObjectExists, createSignedDownloadUrl, deleteObject, getObjectStream, isR2Configured } from './r2.service';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { requireAdmin, requireProjectAccess } from './project-access.service';
@@ -129,6 +129,21 @@ export async function downloadFile(user: AuthenticatedUser, fileId: string) {
   const downloadUrl = await createSignedDownloadUrl(String(file.storage_key), String(file.original_filename));
   await recordAudit(String(file.vault_entry_id), fileId, user.id, 'download');
   return { download_url: downloadUrl, filename: file.original_filename, content_type: file.content_type, size_bytes: file.size_bytes };
+}
+
+export async function getFileContent(user: AuthenticatedUser, fileId: string) {
+  if (!isR2Configured()) throw new AppError(503, 'File storage is not configured.');
+  const file = await requireVaultFile(fileId);
+  if (file.storage_status !== 'available') throw new AppError(400, 'File is not available for preview.');
+  await requireFileEntryAccess(user, String(file.vault_entry_id));
+
+  const object = await getObjectStream(String(file.storage_key));
+  await recordAudit(String(file.vault_entry_id), fileId, user.id, 'preview');
+  return {
+    ...object,
+    contentType: String(file.content_type || object.contentType || 'application/octet-stream'),
+    filename: String(file.original_filename),
+  };
 }
 
 export async function deleteFile(user: AuthenticatedUser, fileId: string): Promise<void> {

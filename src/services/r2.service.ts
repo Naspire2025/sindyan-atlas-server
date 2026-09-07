@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
+import { Readable } from 'node:stream';
 import { env } from '../config/env';
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
@@ -37,6 +38,7 @@ function getClient(): S3Client {
     region: 'auto',
     endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId: R2_ACCESS_KEY_ID!, secretAccessKey: R2_SECRET_ACCESS_KEY! },
+    requestChecksumCalculation: 'WHEN_REQUIRED',
   });
   return cachedClient;
 }
@@ -84,6 +86,26 @@ export async function createSignedDownloadUrl(storageKey: string, filename: stri
     ResponseContentDisposition: `attachment; filename="${filename}"`,
   });
   return getSignedUrl(getClient(), command, { expiresIn: SIGNED_URL_EXPIRY_SECONDS });
+}
+
+export async function getObjectStream(storageKey: string): Promise<{
+  stream: Readable;
+  contentLength?: number;
+  contentType?: string;
+}> {
+  requireR2Config();
+  const response = await getClient().send(new GetObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: storageKey,
+  }));
+  if (!(response.Body instanceof Readable)) {
+    throw new Error('R2 returned an unsupported response stream.');
+  }
+  return {
+    stream: response.Body,
+    contentLength: response.ContentLength,
+    contentType: response.ContentType,
+  };
 }
 
 export async function deleteObject(storageKey: string): Promise<void> {

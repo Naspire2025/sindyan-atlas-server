@@ -1,0 +1,17 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "http://localhost:5173",
+          "http://localhost:5174",
+          "https://sindyan-atlas-client.vercel.app"
+        ],
+        "methods": ["PUT"],
+        "headers": ["Content-Type"]
+      },
+      "exposeHeaders": ["ETag"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

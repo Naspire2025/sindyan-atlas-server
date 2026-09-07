@@ -82,6 +82,19 @@ R2_BUCKET_NAME=
 # INVITATION_DELIVERY_WEBHOOK_URL=
 ```
 
+Browser uploads use presigned R2 `PUT` URLs, so the private bucket also needs a
+CORS policy for every origin in `FRONTEND_ORIGINS`. Update
+`r2-cors.example.json` for the deployment domains, then apply and verify it with
+an account authorized to manage the bucket:
+
+```bash
+npx wrangler r2 bucket cors set <BUCKET_NAME> --file r2-cors.example.json
+npx wrangler r2 bucket cors list <BUCKET_NAME>
+```
+
+Object read/write credentials can sign uploads but may not have permission to
+manage this bucket-level policy.
+
 ### Scripts
 
 ```bash

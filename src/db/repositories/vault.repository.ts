@@ -118,7 +118,10 @@ export async function setVaultEntryTags(entryId: string, tagIds: string[]): Prom
 export async function listVaultFiles(entryId: string): Promise<VaultFileRow[]> {
   const result = await pool.query(
     `SELECT id, vault_entry_id, original_filename, content_type, size_bytes, storage_status, uploaded_by_user_id, uploaded_at, available_at
-     FROM vault_files WHERE vault_entry_id = $1 ORDER BY uploaded_at ASC`,
+     FROM vault_files
+     WHERE vault_entry_id = $1
+       AND storage_status NOT IN ('deleted', 'rejected')
+     ORDER BY uploaded_at ASC`,
     [entryId],
   );
   return result.rows as VaultFileRow[];

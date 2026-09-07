@@ -1,6 +1,6 @@
 import { pool } from './connection';
 
-const CURRENT_SCHEMA_VERSION = 5;
+const CURRENT_SCHEMA_VERSION = 6;
 
 async function columnExists(tableName: string, columnName: string): Promise<boolean> {
   const { rows } = await pool.query(
@@ -424,6 +424,35 @@ const SEQUENTIAL_MIGRATIONS: Record<number, () => Promise<void>> = {
   },
   5: async () => {
     await pool.query('ALTER TABLE project_member_allocations DROP COLUMN IF EXISTS planned_hours');
+  },
+  6: async () => {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS email_queue (
+        id UUID PRIMARY KEY DEFAULT gen_uuid_v7(),
+        idempotency_key TEXT NOT NULL UNIQUE,
+        recipient_email TEXT NOT NULL,
+        recipient_name TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        text_body TEXT NOT NULL,
+        html_body TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'processing', 'delivered', 'failed')),
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        max_retries INTEGER NOT NULL DEFAULT 5,
+        last_error TEXT,
+        next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        delivered_at TIMESTAMPTZ,
+        failed_at TIMESTAMPTZ
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_email_queue_pending
+        ON email_queue(status, next_attempt_at)
+        WHERE status = 'pending';
+
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deadline_reminder_sent BOOLEAN NOT NULL DEFAULT FALSE;
+    `);
   },
 };
 

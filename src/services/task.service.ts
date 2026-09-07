@@ -1,13 +1,16 @@
 import { pool } from '../db/connection';
 import { findTask, type TaskRow } from '../db/repositories/task.repository';
-import { findUserById } from '../db/repositories/user.repository';
 import type { AuthenticatedUser } from '../types/auth';
 import { AppError } from '../utils/app-error.util';
 import { isIsoDate } from '../utils/date.util';
 import { isUuid } from '../utils/request.util';
-import { env } from '../config/env';
-import { sendTaskAssignmentEmail } from './email/email.service';
 import { requireAdmin, requireProjectAccess, requireProjectLead } from './project-access.service';
+import {
+  sendTaskAssignmentNotification,
+  sendTaskBlockedNotification,
+  sendTaskCommentNotification,
+  sendTaskStatusChangeNotification,
+} from './task-notification.service';
 
 const TASK_STATUSES = new Set(['todo', 'in_progress', 'blocked', 'reviewing', 'reviewed', 'done']);
 const TASK_PRIORITIES = new Set(['low', 'medium', 'high', 'critical']);
@@ -123,25 +126,6 @@ async function requireMutableTask(user: AuthenticatedUser, task: TaskRow, update
   await requireProjectLead(user, task.project_id);
 }
 
-async function notifyAssigneeOnTaskAssignment(assigneeUserId: string, task: TaskRow): Promise<void> {
-  if (!env.frontendAppUrl) return;
-  const assignee = await findUserById(assigneeUserId);
-  if (!assignee) return;
-
-  const taskUrl = `${env.frontendAppUrl.replace(/\/$/, '')}/tasks/${encodeURIComponent(task.id)}`;
-  try {
-    await sendTaskAssignmentEmail({
-      assigneeEmail: assignee.email,
-      assigneeName: assignee.name,
-      projectName: String(task.project_name),
-      taskTitle: String(task.title),
-      taskUrl,
-    });
-  } catch (error) {
-    console.error(`Failed to email task assignment for task ${task.id}:`, error);
-  }
-}
-
 function parseCreateTaskInput(body: unknown): CreateTaskInput {
   const input = body as Record<string, unknown>;
   const projectId = optionalIdentifier(input.project_id);
@@ -209,9 +193,8 @@ export async function createTask(user: AuthenticatedUser, body: unknown): Promis
   const task = await findTask(taskId);
   if (!task) throw new AppError(500, 'Task creation failed.');
 
-  const assigneeUserId = input.assigneeUserId;
-  if (assigneeUserId) {
-    await notifyAssigneeOnTaskAssignment(assigneeUserId, task);
+  if (input.assigneeUserId) {
+    await sendTaskAssignmentNotification(user, task);
   }
 
   return task;
@@ -240,6 +223,9 @@ export async function updateTask(user: AuthenticatedUser, taskId: string, body: 
     dueDate: updates.dueDate !== undefined ? updates.dueDate : task.due_date ?? null,
     estimatedHours: updates.estimatedHours !== undefined ? updates.estimatedHours : task.estimated_hours ?? null,
     blockerNote: updates.blockerNote !== undefined ? updates.blockerNote : task.blocker_note ?? null,
+    deliverDeadlineReminder: updates.dueDate === undefined || updates.dueDate === task.due_date
+      ? Boolean(task.deadline_reminder_sent)
+      : false,
   };
 
   const client = await pool.connect();
@@ -248,10 +234,11 @@ export async function updateTask(user: AuthenticatedUser, taskId: string, body: 
     const updateResult = await client.query(`
       UPDATE tasks SET milestone_id = $1, assignee_user_id = $2, title = $3,
         description = $4, status = $5, priority = $6, due_date = $7,
-        estimated_hours = $8, blocker_note = $9, updated_at = NOW()
-      WHERE id = $10 AND xmin::text = $11
+        estimated_hours = $8, blocker_note = $9, deadline_reminder_sent = $10,
+        updated_at = NOW()
+      WHERE id = $11 AND xmin::text = $12
       RETURNING id
-    `, [nextTask.milestoneId, nextTask.assigneeUserId, nextTask.title, nextTask.description, nextTask.status, nextTask.priority, nextTask.dueDate, nextTask.estimatedHours, nextTask.blockerNote, taskId, task.row_version]);
+    `, [nextTask.milestoneId, nextTask.assigneeUserId, nextTask.title, nextTask.description, nextTask.status, nextTask.priority, nextTask.dueDate, nextTask.estimatedHours, nextTask.blockerNote, nextTask.deliverDeadlineReminder, taskId, task.row_version]);
     if (!updateResult.rows[0]) throw new AppError(409, 'Task changed while you were editing it. Refresh and try again.');
     await client.query(`
       INSERT INTO task_activity (task_id, actor_user_id, event_type, previous_value, new_value)
@@ -268,9 +255,14 @@ export async function updateTask(user: AuthenticatedUser, taskId: string, body: 
   const updatedTask = await findTask(taskId);
   if (!updatedTask) throw new AppError(500, 'Task update failed.');
 
-  const newAssigneeId = updates.assigneeUserId;
-  if (newAssigneeId !== undefined && newAssigneeId !== null && newAssigneeId !== task.assignee_user_id) {
-    await notifyAssigneeOnTaskAssignment(newAssigneeId, updatedTask);
+  if (updates.status) {
+    await sendTaskStatusChangeNotification(user, updatedTask, task.status, updates.status);
+  }
+  if (updates.status === 'blocked') {
+    await sendTaskBlockedNotification(user, updatedTask);
+  }
+  if (updates.assigneeUserId !== undefined && updates.assigneeUserId !== null && updates.assigneeUserId !== task.assignee_user_id) {
+    await sendTaskAssignmentNotification(user, updatedTask);
   }
 
   return updatedTask;
@@ -317,5 +309,6 @@ export async function addTaskComment(user: AuthenticatedUser, taskId: string, bo
     FROM task_comments JOIN users ON users.id = task_comments.author_user_id
     WHERE task_comments.id = $1
   `, [commentId!]);
+  await sendTaskCommentNotification(user, taskId, commentId!, commentBody);
   return commentResult.rows[0] as Record<string, unknown>;
 }

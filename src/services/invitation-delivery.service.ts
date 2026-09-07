@@ -1,6 +1,7 @@
 import { env } from '../config/env';
 import { AppError } from '../utils/app-error.util';
-import { sendInvitationEmail } from './email/email.service';
+import { sendEmail } from './email/email.service';
+import { renderInvitationEmail } from './email/templates/invitation.template';
 
 export async function deliverInvitation(input: {
   email: string;
@@ -12,10 +13,15 @@ export async function deliverInvitation(input: {
   }
   const invitationUrl = `${env.frontendAppUrl.replace(/\/$/, '')}/accept-invitation?token=${encodeURIComponent(input.token)}`;
   try {
-    await sendInvitationEmail({
-      email: input.email,
-      name: input.name,
+    const email = renderInvitationEmail({
+      recipientName: input.name,
       invitationUrl,
+    });
+    await sendEmail({
+      to: input.email,
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
