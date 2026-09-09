@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { getMemberSummary, getOrganizationUser, listOrganizationUsers, updateOrganizationUser } from '../services/user.service';
+import { getMemberSummary, getOrganizationUser, listOrganizationUsers, updateOrganizationUser, updateOwnPreferences } from '../services/user.service';
 import { listInvitationSummaries } from '../services/auth.service';
 import { parseUuid, requireUser } from '../utils/request.util';
 
@@ -23,5 +23,11 @@ export async function listInvitationsController(request: Request, response: Resp
   try {
     await listOrganizationUsers(requireUser(request.user));
     response.json(await listInvitationSummaries());
+  } catch (error) { next(error); }
+}
+
+export async function updateOwnPreferencesController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    response.json({ user: await updateOwnPreferences(requireUser(request.user), request.body) });
   } catch (error) { next(error); }
 }

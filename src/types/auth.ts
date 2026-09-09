@@ -8,6 +8,7 @@ export type AuthenticatedUser = {
   email: string;
   role: OrganizationRole;
   status: UserStatus;
+  preferred_locale?: 'en' | 'ar' | null;
 };
 
 export type SessionIdentity = AuthenticatedUser & {

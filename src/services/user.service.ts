@@ -1,4 +1,4 @@
-import { countActiveAdmins, findMemberAssignments, findMemberProjects, findUserById, listUsers, updateUserAccount } from '../db/repositories/user.repository';
+import { countActiveAdmins, findMemberAssignments, findMemberProjects, findUserById, listUsers, updateUserAccount, updateUserPreferences } from '../db/repositories/user.repository';
 import { revokeActiveSessionsForUser } from '../db/repositories/session.repository';
 import { pool } from '../db/connection';
 import type { AuthenticatedUser, OrganizationRole, UserStatus } from '../types/auth';
@@ -74,4 +74,19 @@ export async function updateOrganizationUser(actor: AuthenticatedUser, userId: s
   await updateUserAccount(userId, next);
   if (next.status === 'suspended' || removesActiveAdmin) await revokeActiveSessionsForUser(userId);
   return getOrganizationUser(actor, userId);
+}
+
+export async function updateOwnPreferences(actor: AuthenticatedUser, body: unknown): Promise<AuthenticatedUser> {
+  const input = body as { locale?: unknown };
+  let preferredLocale: 'en' | 'ar' | null = null;
+  if (input.locale !== undefined) {
+    if (input.locale === null) preferredLocale = null;
+    else if (input.locale === 'en' || input.locale === 'ar') preferredLocale = input.locale;
+    else throw new AppError(400, 'locale must be en or ar.');
+  } else {
+    const existing = await findUserById(actor.id);
+    preferredLocale = existing?.preferred_locale ?? null;
+  }
+  await updateUserPreferences(actor.id, preferredLocale);
+  return getOrganizationUser(actor, actor.id);
 }

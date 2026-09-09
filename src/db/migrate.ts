@@ -1,6 +1,6 @@
 import { pool } from './connection';
 
-const CURRENT_SCHEMA_VERSION = 6;
+const CURRENT_SCHEMA_VERSION = 7;
 
 async function columnExists(tableName: string, columnName: string): Promise<boolean> {
   const { rows } = await pool.query(
@@ -425,7 +425,7 @@ const SEQUENTIAL_MIGRATIONS: Record<number, () => Promise<void>> = {
   5: async () => {
     await pool.query('ALTER TABLE project_member_allocations DROP COLUMN IF EXISTS planned_hours');
   },
-  6: async () => {
+   6: async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS email_queue (
         id UUID PRIMARY KEY DEFAULT gen_uuid_v7(),
@@ -452,6 +452,12 @@ const SEQUENTIAL_MIGRATIONS: Record<number, () => Promise<void>> = {
         WHERE status = 'pending';
 
       ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deadline_reminder_sent BOOLEAN NOT NULL DEFAULT FALSE;
+    `);
+  },
+  7: async () => {
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_locale TEXT
+        CHECK (preferred_locale IS NULL OR preferred_locale IN ('en', 'ar'));
     `);
   },
 };

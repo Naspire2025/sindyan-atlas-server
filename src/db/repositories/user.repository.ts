@@ -6,7 +6,7 @@ type UserRow = AuthenticatedUser & { password_hash: string | null };
 
 export async function findUserByEmail(email: string): Promise<UserRow | undefined> {
   const result = await pool.query(`
-    SELECT id, name, email_display AS email, role, status, password_hash
+    SELECT id, name, email_display AS email, role, status, preferred_locale, password_hash
     FROM users
     WHERE email_normalized = $1
   `, [email]);
@@ -36,7 +36,7 @@ export async function createUser(input: {
 
 export async function findUserById(userId: string): Promise<AuthenticatedUser | undefined> {
   const result = await pool.query(`
-    SELECT id, name, email_display AS email, role, status
+    SELECT id, name, email_display AS email, role, status, preferred_locale
     FROM users
     WHERE id = $1
   `, [userId]);
@@ -52,11 +52,18 @@ export async function activatePendingUser(userId: string, passwordHash: string):
 
 export async function listUsers(): Promise<AuthenticatedUser[]> {
   const result = await pool.query(`
-    SELECT id, name, email_display AS email, role, status
+    SELECT id, name, email_display AS email, role, status, preferred_locale
     FROM users
     ORDER BY name, id
   `);
   return result.rows as AuthenticatedUser[];
+}
+
+export async function updateUserPreferences(userId: string, preferredLocale: 'en' | 'ar' | null): Promise<void> {
+  await pool.query(`
+    UPDATE users SET preferred_locale = $1, updated_at = NOW()
+    WHERE id = $2
+  `, [preferredLocale, userId]);
 }
 
 export async function updateUserAccount(userId: string, input: { name: string; role: OrganizationRole; status: UserStatus }): Promise<void> {
