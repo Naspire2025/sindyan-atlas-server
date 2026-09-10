@@ -9,6 +9,7 @@ const { hashPassword } = require('../utils/password.util') as typeof import('../
 const { login, changePassword } = require('../services/auth.service') as typeof import('../services/auth.service');
 const { createProject } = require('../services/project.service') as typeof import('../services/project.service');
 const { createTask, updateTask } = require('../services/task.service') as typeof import('../services/task.service');
+const { updateOwnPreferences } = require('../services/user.service') as typeof import('../services/user.service');
 const { createProjectLink, createProjectMilestone, createProjectPhase, deleteMilestone, listProjectLinks, updateMilestone } = require('../services/project-planning.service') as typeof import('../services/project-planning.service');
 
 test('migrations create the access-control, vault, and single-session foundations', async () => {
@@ -38,6 +39,10 @@ test('migrations create the access-control, vault, and single-session foundation
   const admin = { id: adminId, name: 'Test Admin', email: 'admin@example.test', role: 'admin' as const, status: 'active' as const };
   const lead = { id: leadId, name: 'Project Lead', email: 'lead@example.test', role: 'team_member' as const, status: 'active' as const };
   const member = { id: memberId, name: 'Team Member', email: 'member@example.test', role: 'team_member' as const, status: 'active' as const };
+  assert.equal((await updateOwnPreferences(member, { locale: 'ar' })).preferred_locale, 'ar');
+  await assert.rejects(updateOwnPreferences(member, null), { message: 'Request body must be an object.' });
+  await assert.rejects(updateOwnPreferences(member, { locale: 'fr' }), { message: 'locale must be en, ar, or null.' });
+  await assert.rejects(updateOwnPreferences(member, { locale: 'en', role: 'admin' }), { message: 'locale is the only supported preference.' });
   const project = await createProject(admin, { name: 'Role verification project' });
   await addProjectMember(project.id, leadId, 'project_lead');
   await addProjectMember(project.id, memberId, 'member');

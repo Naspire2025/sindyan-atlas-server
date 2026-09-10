@@ -77,16 +77,23 @@ export async function updateOrganizationUser(actor: AuthenticatedUser, userId: s
 }
 
 export async function updateOwnPreferences(actor: AuthenticatedUser, body: unknown): Promise<AuthenticatedUser> {
-  const input = body as { locale?: unknown };
-  let preferredLocale: 'en' | 'ar' | null = null;
-  if (input.locale !== undefined) {
-    if (input.locale === null) preferredLocale = null;
-    else if (input.locale === 'en' || input.locale === 'ar') preferredLocale = input.locale;
-    else throw new AppError(400, 'locale must be en or ar.');
-  } else {
-    const existing = await findUserById(actor.id);
-    preferredLocale = existing?.preferred_locale ?? null;
+  const preferredLocale = parseLocalePreference(body);
+  const updatedUser = await updateUserPreferences(actor.id, preferredLocale);
+  if (!updatedUser) throw new AppError(404, 'User unavailable.');
+  return updatedUser;
+}
+
+export function parseLocalePreference(body: unknown): 'en' | 'ar' | null {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw new AppError(400, 'Request body must be an object.');
   }
-  await updateUserPreferences(actor.id, preferredLocale);
-  return getOrganizationUser(actor, actor.id);
+
+  const input = body as Record<string, unknown>;
+  const fields = Object.keys(input);
+  if (fields.length !== 1 || fields[0] !== 'locale') {
+    throw new AppError(400, 'locale is the only supported preference.');
+  }
+
+  if (input.locale === null || input.locale === 'en' || input.locale === 'ar') return input.locale;
+  throw new AppError(400, 'locale must be en, ar, or null.');
 }

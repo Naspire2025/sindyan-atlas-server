@@ -59,11 +59,13 @@ export async function listUsers(): Promise<AuthenticatedUser[]> {
   return result.rows as AuthenticatedUser[];
 }
 
-export async function updateUserPreferences(userId: string, preferredLocale: 'en' | 'ar' | null): Promise<void> {
-  await pool.query(`
+export async function updateUserPreferences(userId: string, preferredLocale: 'en' | 'ar' | null): Promise<AuthenticatedUser | undefined> {
+  const result = await pool.query(`
     UPDATE users SET preferred_locale = $1, updated_at = NOW()
     WHERE id = $2
+    RETURNING id, name, email_display AS email, role, status, preferred_locale
   `, [preferredLocale, userId]);
+  return result.rows[0] as AuthenticatedUser | undefined;
 }
 
 export async function updateUserAccount(userId: string, input: { name: string; role: OrganizationRole; status: UserStatus }): Promise<void> {

@@ -10,7 +10,7 @@
     "dev": "npm run build && node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --env-file=.env.test --test --test-concurrency=1 dist/db/migrate.test.js dist/db/integration.test.js",
-    "test:unit": "npm run build && node --env-file=.env.test --test dist/services/project.service.test.js dist/services/r2.service.test.js dist/services/vault-file.service.test.js dist/services/email/email.service.test.js dist/services/email/templates/templates.test.js",
+    "test:unit": "npm run build && node --env-file=.env.test --test dist/services/project.service.test.js dist/services/user.service.test.js dist/services/r2.service.test.js dist/services/vault-file.service.test.js dist/services/email/email.service.test.js dist/services/email/templates/templates.test.js",
     "seed": "node scripts/seedProjects.js",
     "seed:check": "node scripts/seedProjects.js --dry-run"
   },
